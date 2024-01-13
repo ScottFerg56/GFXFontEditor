@@ -1,14 +1,10 @@
 ﻿TODO:
-	create web page
+	hoard/apple/mac fonts load issue with gacha fonts
 	github
+		README
 		create repository for
-			GFX Font Editor
 			BinaryFontDemo
-		add About entry
-	Help
-		create file
-		add File menu item
 
 FUTURE:
-	save settings
+	save window size/position
 	Undo
