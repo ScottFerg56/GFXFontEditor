@@ -1,0 +1,14 @@
+﻿TODO:
+	create web page
+	github
+		create repository for
+			GFX Font Editor
+			BinaryFontDemo
+		add About entry
+	Help
+		create file
+		add File menu item
+
+FUTURE:
+	save settings
+	Undo
