@@ -1,5 +1,14 @@
-﻿TODO:
-	hoard/apple/mac fonts load issue with gacha fonts
+﻿DONE:
+center font view on file load
+& pick a glyph in the sample text if possible
+minor bug fixes
+clear files to open list with SHIFT on the next file button
+improvements to YAFF file loading
+DRAW files, code sharing with YAFF
+
+TODO:
+	listViewGlyphs command to add glyph to sample text
+	test on non-magnified windows
 	github
 		README
 		create repository for

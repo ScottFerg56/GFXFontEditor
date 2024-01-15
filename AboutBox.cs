@@ -4,7 +4,7 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Text.RegularExpressions;
 
-namespace FMBase
+namespace GFXFontEditor
 {
 	public partial class AboutBox : Form
 	{

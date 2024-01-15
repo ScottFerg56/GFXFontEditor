@@ -4,7 +4,8 @@
  .yaff format: https://github.com/robhagemans/hoard-of-bitfonts
 */
 
-using FMBase;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
 
 namespace GFXFontEditor
 {
@@ -27,7 +28,7 @@ namespace GFXFontEditor
 			UpDownPixelsPerDot.ValueChanged += UpDownPPD_ValueChanged;
 			// setup the FirstCode updown control
 			UpDownFirstCode.Minimum = 0;
-			UpDownFirstCode.Maximum = 255;
+			UpDownFirstCode.Maximum = 0xFFFF;
 			UpDownFirstCode.Value = 32;
 			UpDownFirstCode.Hexadecimal = true;
 			UpDownFirstCode.ValueChanged += UpDownFirstCode_ValueChanged;
@@ -40,8 +41,20 @@ namespace GFXFontEditor
 			MRUNames.Changed += MRUNames_Changed;
 			// open file from command line?
 			if (args != null && args.Length > 0 && !string.IsNullOrWhiteSpace(args[0]))
+				startupFileName = args[0];
+		}
+
+		readonly string startupFileName = null;
+
+		private void Editor_Shown(object sender, EventArgs e)
+		{
+			listViewGlyphs.Focus();
+			// defer any font related UI interaction until after the form is shown
+			// and the layout is settled
+			// otherwise problems ensue!
+			if (startupFileName is not null)
 			{
-				if (LoadFile(args[0]))
+				if (LoadFile(startupFileName))
 					return;
 			}
 			// open most recently used file?
@@ -55,10 +68,6 @@ namespace GFXFontEditor
 				MRUNames.RemoveEntry(MRUNames[0]);
 			}
 			NewFile();
-		}
-
-		private void Editor_Shown(object sender, EventArgs e)
-		{
 		}
 
 		private void Editor_FormClosing(object sender, FormClosingEventArgs e)
@@ -166,6 +175,13 @@ namespace GFXFontEditor
 		/// <param name="inx">The index to add</param>
 		void SelectItem(int inx)
 		{
+			if (listViewGlyphs.Items.Count == 0)
+				return;
+			if (inx < 0 || inx >= listViewGlyphs.Items.Count)
+			{
+				listViewGlyphs.SelectedItems.Clear();
+				return;
+			}
 			listViewGlyphs.SelectedIndices.Add(inx);
 			listViewGlyphs.EnsureVisible(inx);
 			listViewGlyphs.FocusedItem = listViewGlyphs.Items[inx];
@@ -564,9 +580,10 @@ namespace GFXFontEditor
 		/// <summary>
 		/// Prepare the bitmap display image of sample text for the pictureBoxFontView.
 		/// </summary>
-		void ShowFontView()
+		void ShowFontView(bool center = false)
 		{
 			pictureBoxFontView.Image = CurrentFont?.ToBitmap(toolStripTextBoxFVText.Text, PixelsPerDot, Color.Black, Color.White, out boundsFontView);
+			SelectFontViewGlyph(center);
 		}
 
 		/// <summary>
@@ -592,7 +609,7 @@ namespace GFXFontEditor
 		/// Scroll the pictureBoxFontView in its parent panel to make sure the current glyph is visible
 		/// in the bitmap image.
 		/// </summary>
-		void SelectFontViewGlyph()
+		void SelectFontViewGlyph(bool center = false)
 		{
 			var (left, right) = BoundsOfSelectedGlyph();
 			if (left != -1)
@@ -604,31 +621,55 @@ namespace GFXFontEditor
 				// So we adjust the value to nudge the glyph into view.
 				//
 				//var min = splitContainer2.Panel2.HorizontalScroll.Minimum;
-				//var max = splitContainer2.Panel2.HorizontalScroll.Maximum;
+				var max = splitContainer2.Panel2.HorizontalScroll.Maximum;
+
 				var v = splitContainer2.Panel2.HorizontalScroll.Value;
 				var pw = splitContainer2.Panel2.Width;
 				var iw = pictureBoxFontView.Image.Width;
 
 				var delta = iw - pw;
+
+				if (max == 100 && delta > 100)
+				{
+					// if we get here before Form_Shown,
+					// the scroll max will still be at the default 100
+					Debug.Fail("Font view UI has not settled");
+					return;
+				}
+
 				// nothing to do if the Image fits entirely within the Panel
 				if (delta > 0)
 				{
 					// calculate a new value, with a bit of a margin added
 					// but only if the glyph is not fully in view
 					int newv = v;
-					if (left < v + 10)
-						newv = left - 10;
-					else if (right > v + pw - 10)
-						newv = right - pw + 10;
-					if (newv < 0)
-						newv = 0;
-					else if (newv > delta)
-						newv = delta;
-					if (newv != v)
+					if (center)
+					{
+						// try to center glyph in the scroll
+						newv = Math.Max(0, ((left + right) - pw) / 2);
+					}
+					else
+					{   // try to keep scroll stable
+						if (left < v + 10)
+							newv = left - 10;
+						else if (right > v + pw - 10)
+							newv = right - pw + 10;
+						if (newv < 0)
+							newv = 0;
+						else if (newv > delta)
+							newv = delta;
+					}
+					if (newv != v && newv <= max)
 					{
 						//Debug.WriteLine($"v:{v} max:{max} delta:{delta} left:{left} newv:{newv}");
-						splitContainer2.Panel2.HorizontalScroll.Value = newv;
-						splitContainer2.Panel2.PerformLayout(); // required to make scrollbar do it's job?!
+						try
+						{
+							splitContainer2.Panel2.HorizontalScroll.Value = newv;
+							splitContainer2.Panel2.PerformLayout(); // required to make scrollbar do it's job?!
+						}
+						catch (Exception)
+						{
+						}
 					}
 				}
 			}
@@ -640,6 +681,8 @@ namespace GFXFontEditor
 		/// </summary>
 		private void pictureBoxFontView_Paint(object sender, PaintEventArgs e)
 		{
+			if (pictureBoxFontView.Image is null)
+				return;
 			// here we're painting over the Image already drawn by the base PictureBox code
 			var (left, right) = BoundsOfSelectedGlyph();
 			if (left != -1)
@@ -734,6 +777,19 @@ namespace GFXFontEditor
 			// so use a known char for those; '?' in a black diamond
 			var c = (glyph.Code < 0x20 || glyph.Code >= 0x80 && glyph.Code <= 0xA0) ? (char)0xFFFD : (char)glyph.Code;
 			var item = ItemOfGlyph(glyph);
+			switch (glyph.Status)
+			{
+				case Glyph.States.Inserted:
+					item.BackColor = Color.Silver;
+					item.ForeColor = Color.DimGray;
+					break;
+				case Glyph.States.Error:
+					item.BackColor = Color.RosyBrown;
+					break;
+				case Glyph.States.Normal:
+				default:
+					break;
+			}
 			item.SubItems[0].Text = $"{c}";
 			item.SubItems[1].Text = $"0x{glyph.Code:X2}";
 			item.SubItems[2].Text = $"{glyph.Width}";
@@ -786,23 +842,45 @@ namespace GFXFontEditor
 						Tag = glyph
 					});
 			}
+			if (font.FirstCode > UpDownFirstCode.Maximum)
+				font.FirstCode = (ushort)UpDownFirstCode.Maximum;
 			UpDownFirstCode.Value = font.FirstCode;
 			UpdateAllGlyphItems();
 			toolStripLabelHeight.Text = $"Line Height: {CurrentFont.yAdvance}";
 			RecalcDesignSpace();
-			// select the first non-blank glyph
-			var sel = font.Glyphs.FirstOrDefault(g => !g.Bounds.IsEmpty);
-			if (sel is not null)
+			if (font.Glyphs.Any())
 			{
-				int inx = IndexOfGlyph(sel);
-				SelectItem(inx);
-			}
-			else if (font.Glyphs.Any())
-			{
-				SelectItem(0);
+				// initially select a glyph
+				Glyph glyph = null;
+				if (!string.IsNullOrWhiteSpace(toolStripTextBoxFVText.Text))
+				{
+					// first non-empty glyph represented in the sample text
+					glyph = font.Glyphs.FirstOrDefault(g => toolStripTextBoxFVText.Text.Contains((char)g.Code) && !g.Bounds.IsEmpty);
+				}
+				if (glyph is null)
+				{
+					// pick a glyph close to the middle between the first and last non-empty glyphs
+					// this attempts to show the widest range of glyphs, especially when sampling fonts
+					// by dropping font files and sequencing through them (manually or with auto-sequencing)
+					glyph = font.Glyphs.FirstOrDefault(g => !g.Bounds.IsEmpty);
+					var inx1 = IndexOfGlyph(glyph);
+					var inx2 = IndexOfGlyph(font.Glyphs.Last(g => !g.Bounds.IsEmpty));
+					for (int i = (inx1 + inx2) / 2; i != inx1; i += Math.Sign(inx1 - inx2))
+					{
+						if (!font.Glyphs[i].Bounds.IsEmpty)
+						{
+							glyph = font.Glyphs[i];
+							break;
+						}
+					}
+				}
+				if (glyph is null)
+					SelectItem(0);
+				else
+					SelectItem(IndexOfGlyph(glyph));
 			}
 			toolStripLabelNumGlyphs.Text = $"# Glyphs: {CurrentFont.Glyphs.Count}";
-			ShowFontView();
+			ShowFontView(true);
 			SetTitle();
 			DocChanged = false;
 		}
@@ -874,6 +952,13 @@ namespace GFXFontEditor
 			SetFont(font);
 		}
 
+		[DllImport("user32.dll")]
+		private static extern IntPtr SendMessage(
+			IntPtr hWnd,
+			UInt32 msg,
+			IntPtr wParam,
+			IntPtr lParam);
+
 		/// <summary>
 		/// Close the current file and load a font file for editing.
 		/// </summary>
@@ -885,9 +970,17 @@ namespace GFXFontEditor
 				return false;
 			try
 			{
+				Application.UseWaitCursor = true;
+				SendMessage(Handle, 0x20, Handle, (IntPtr)1);
 				var font = GfxFont.LoadFile(fileName);
 				if (font is not null)
 				{
+					const int limit = 2048;
+					if (font.Glyphs.Count > limit)
+					{
+						MessageBox.Show($"Large file warning:\r\nThis file will be truncated to {limit} of {font.Glyphs.Count} glyphs.", "GFX Font Editor");
+						font.Truncate(limit);
+					}
 					SetFont(font);
 					MRUNames.AddEntry(fileName);
 					return true;
@@ -899,6 +992,11 @@ namespace GFXFontEditor
 			{
 				MRUNames.RemoveEntry(fileName);
 				return false;
+			}
+			finally
+			{
+				Application.UseWaitCursor = false;
+				//SendMessage(Handle, 0x20, Handle, (IntPtr)1);
 			}
 		}
 
@@ -948,7 +1046,7 @@ namespace GFXFontEditor
 		/// <summary>
 		/// A list of files which were dropped onto the UI and remain to be opened.
 		/// </summary>
-		List<string> FilesToOpen;
+		List<string> FilesToOpen = new();
 
 		/// <summary>
 		/// True if we're autoloading thru the dropped files using a timer.
@@ -961,6 +1059,23 @@ namespace GFXFontEditor
 		readonly System.Windows.Forms.Timer OpenTimer = new() { Enabled = false, Interval = 100 };
 
 		/// <summary>
+		/// Show the next file to open on the tool strip
+		/// </summary>
+		void ShowNextFile()
+		{
+			if (FilesToOpen is not null && FilesToOpen.Count > 0)
+			{
+				toolStripButtonNextFile.Text = $"Next file: {Path.GetFileName(FilesToOpen.First())} ({FilesToOpen.Count} left)";
+				toolStripButtonNextFile.Visible = true;
+			}
+			else
+			{
+				toolStripButtonNextFile.Text = "";
+				toolStripButtonNextFile.Visible = false;
+			}
+		}
+
+		/// <summary>
 		/// Open the next file in FilesToOpen.
 		/// </summary>
 		private void OpenNextFile()
@@ -970,22 +1085,13 @@ namespace GFXFontEditor
 				string fileName = FilesToOpen.First();
 				FilesToOpen.RemoveAt(0);
 				LoadFile(fileName);
-				if (FilesToOpen.Count > 0)
+				if (FilesToOpen.Count > 0 && AutoSeqFiles)
 				{
-					// present the next file to load in a button
-					toolStripButtonNextFile.Text = $"Next file: {Path.GetFileName(FilesToOpen.First())} ({FilesToOpen.Count} left)";
-					toolStripButtonNextFile.Visible = true;
-					if (AutoSeqFiles)
-					{
-						// autosequence to next file
-						OpenTimer.Interval = 4000;
-						OpenTimer.Enabled = true;
-					}
+					// autosequence to next file
+					OpenTimer.Interval = 2000;
+					OpenTimer.Enabled = true;
 				}
-				else
-				{
-					toolStripButtonNextFile.Visible = false;
-				}
+				ShowNextFile();
 			}
 			else
 			{
@@ -998,6 +1104,14 @@ namespace GFXFontEditor
 		/// </summary>
 		private void toolStripButtonNextFile_Click(object sender, EventArgs e)
 		{
+			if ((Control.ModifierKeys & Keys.Shift) != 0)
+			{
+				AutoSeqFiles = false;
+				FilesToOpen = new();
+				ShowNextFile();
+				OpenTimer.Enabled = false;
+				return;
+			}
 			// CONTROL as a modifier key enters auto sequence mode
 			bool newAuto = (Control.ModifierKeys & Keys.Control) != 0;
 			if (newAuto != AutoSeqFiles)
@@ -1068,9 +1182,10 @@ namespace GFXFontEditor
 		private void OpenTimer_Tick(object sender, EventArgs e)
 		{
 			OpenTimer.Enabled = false;
-			if (!CanFocus)
+			if (!CanFocus || pictureBoxGlyph.Capture)
 			{
 				// kill the auto sequence if a modal window (e.g. dialog or assertion) is open
+				// or if an mouse operation has been initiated
 				AutoSeqFiles = false;
 				return;
 			}
@@ -1263,7 +1378,6 @@ namespace GFXFontEditor
 			};
 			if (ofd.ShowDialog() != DialogResult.OK)
 				return;
-			FilesToOpen = null;
 			LoadFile(ofd.FileName);
 		}
 

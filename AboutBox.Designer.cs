@@ -1,4 +1,4 @@
-namespace FMBase
+namespace GFXFontEditor
 {
 	partial class AboutBox
 	{

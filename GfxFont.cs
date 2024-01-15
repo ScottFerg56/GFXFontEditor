@@ -1,5 +1,6 @@
 ﻿using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Drawing;
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -12,7 +13,7 @@ namespace GFXFontEditor
 	/// in the Adafruit GFX Library.
 	/// </summary>
 	public class GfxFont
-    {
+	{
 		/*
 			https://github.com/adafruit/Adafruit-GFX-Library/blob/master/gfxfont.h
 
@@ -29,7 +30,7 @@ namespace GFXFontEditor
 		/// </summary>
 		public string FullPathName;
 
-        protected ushort _FirstCode;
+		protected ushort _FirstCode;
 		/// <summary>
 		/// The character code for the font's first glyph.
 		/// </summary>
@@ -37,7 +38,7 @@ namespace GFXFontEditor
 		/// Each Glyph.Code is based on its position in the font's list relative to the FirstCode.
 		/// The font must maintain these values as Glyphs are added or removed or FirstCode changes.
 		/// </remarks>
-        public ushort FirstCode
+		public ushort FirstCode
 		{
 			get => _FirstCode;
 			set
@@ -48,17 +49,17 @@ namespace GFXFontEditor
 				ResetCodes();
 			}
 		}
-        
+
 		/// <summary>
 		/// The number of y pixels advanced from the start of one line of charaters to the next.
 		/// </summary>
 		public int yAdvance;
-        
-        protected List<Glyph> _Glyphs = new();
+
+		protected List<Glyph> _Glyphs = new();
 		/// <summary>
 		/// The font's list of Glyphs
 		/// </summary>
-        public ReadOnlyCollection<Glyph> Glyphs => _Glyphs.AsReadOnly();
+		public ReadOnlyCollection<Glyph> Glyphs => _Glyphs.AsReadOnly();
 
 		/// <summary>
 		/// Gets the rectangular bounds that tightly contains the Bounds of all the Glyphs.
@@ -155,6 +156,16 @@ namespace GFXFontEditor
 				glyph.Code = --_FirstCode;
 			else
 				ResetCodes();
+		}
+
+		/// <summary>
+		/// Truncate glyph list to a specified maximum.
+		/// </summary>
+		/// <param name="length">Maximum length to allow</param>
+		public void Truncate(int length)
+		{
+			if (_Glyphs.Count > length)
+				_Glyphs.RemoveRange(length, _Glyphs.Count - length);
 		}
 
 		/// <summary>
@@ -255,6 +266,7 @@ namespace GFXFontEditor
 				(".yaff", "YAFF"),
 				(".gfxfntx", "XML Font"),
 				(".gfxfntb", "Binary Font"),
+				(".draw", "DRAW"),
 			};
 		}
 
@@ -607,7 +619,7 @@ namespace GFXFontEditor
 				var gl = glyphs[i];
 				if (gl.Count < 6)
 				{
-					MessageBox.Show($"Incomplete GFXGlyph strtucture");
+					MessageBox.Show($"Incomplete GFXGlyph structure");
 					return null;
 				}
 				var offset1 = gl[0];
@@ -632,61 +644,198 @@ namespace GFXFontEditor
 		}
 
 		/// <summary>
-		/// Load a YAFF font file.
+		/// Base class for common DrawParser and YaffParser support.
 		/// </summary>
-		/// <param name="fileName">Name of the file to load.</param>
-		/// <returns>GfxFont loaded, or null if the load fails.</returns>
-		public static GfxFont LoadYaffFile(string fileName)
+		class LineParser
 		{
-			List<Glyph> glyphs = new();
-			using var file = File.OpenText(fileName);
-			bool keepLine = false;
-			string line = "";
-			int lineNumber = 0;
-			bool seenGlyphs = false;
-			bool inMap = false;
-			List<string> mapLines = null;
-			int mapHeight = -1;
-			byte[] data = null;
-			ushort cCode = 0xFFFF;	// char code (decimal or hex)
-			ushort aCode = 0xFFFF;	// ascii code ('x')
-			ushort uCode = 0xFFFF;  // u code (unicode)
-			ushort xCode = 0x8000;	// code not found, increment
-			Dictionary<string, string> fontDict = new();
-			Dictionary<string, string> glyphDict = null;
+			readonly StreamReader file;
+			readonly string fileName;
+			public List<Glyph> glyphs = new();
+			public List<Glyph> glyphsErr = new();
+			private int lineNumber = 0;
+			public List<string> mapLines = null;
+			public int mapHeight = -1;
+			public ushort cCode = 0xFFFF;  // char code (decimal or hex)
+			public ushort aCode = 0xFFFF;  // ascii code ('x')
+			public ushort uCode = 0xFFFF;  // u code (unicode)
 
-			void Trace(string msg)
+			public LineParser(string fileName)
+			{
+				this.fileName = fileName;
+				file = File.OpenText(fileName);
+			}
+
+			/// <summary>
+			/// Read a line from the file, absorbing blank and comment lines.
+			/// </summary>
+			/// <returns>The line read</returns>
+			public string ReadLine()
+			{
+				while (true)
+				{
+					var line = file.ReadLine();
+					lineNumber++;
+					if (line == null)
+						return null;
+					if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#"))
+						continue;
+					return line;
+				}
+			}
+
+			/// <summary>
+			/// Safely parse a string as an integer, with a default return value on failure.
+			/// </summary>
+			/// <param name="s">The numeric string to parse</param>
+			/// <param name="numberStyle">Number style</param>
+			/// <param name="def">Default value for failure</param>
+			/// <returns>The parsed value, or default if failure</returns>
+			public int IntParse(string s, NumberStyles numberStyle = NumberStyles.Integer, int def = 0)
+			{
+				if (!int.TryParse(s, numberStyle, null, out int v))
+				{
+					Trace($"invalid numeric string: [{s}]");
+					return def;
+				}
+				return v;
+			}
+
+			/// <summary>
+			/// Output a Debug message, with filename and linenumber.
+			/// </summary>
+			/// <param name="msg">The message to output</param>
+			public void Trace(string msg)
 			{
 				Debug.WriteLine($"[{fileName}][{lineNumber}] {msg}");
 			}
 
-			void TraceAssert(bool cond, string msg)
+			/// <summary>
+			/// Output a Debug message, with filename and linenumber, if a condition is false.
+			/// </summary>
+			/// <param name="cond">The test condition</param>
+			/// <param name="msg">The message to output</param>
+			public void TraceAssert(bool cond, string msg)
 			{
 				if (!cond)
 					Trace(msg);
 			}
 
-			void OpenMap()
+			/// <summary>
+			/// Finish glyph processing from the map lines and parsed character code.
+			/// </summary>
+			/// <returns>The created Glyph</returns>
+			public virtual Glyph FinishGlyph()
 			{
-				if (inMap)
-					return;
-				mapLines = new();
-				inMap = true;
+				var (data, width, height) = MapLinesToData(mapLines, ref mapHeight);
+				mapLines = null;
+				if (data is null)
+					return null;
+				ushort code = 0;
+				if (cCode != 0xFFFF)
+				{
+					code = cCode;
+				}
+				else if (uCode != 0xFFFF)
+				{
+					// e.g. figlet-banner.yaff
+					code = uCode;
+				}
+				else if (aCode != 0xFFFF)
+				{
+					Trace("using ascii glyph code label");
+					code = aCode;
+				}
+				else
+				{
+					//Trace("no glyph code label");
+					code = 0xFFFF;
+				}
+				if (code != 0xFFFF && glyphs.Any(g => g.Code == code))
+				{
+					Trace($"duplicate glyph code: 0x{code:X2}");
+					code = 0xFFFF;
+				}
+				cCode = 0xFFFF;
+				aCode = 0xFFFF;
+				uCode = 0xFFFF;
+				Glyph glyph;
+				if (data.Length == 0)
+					glyph = new(null, 0, 0, 0, 0, 0);
+				else
+					glyph = new Glyph(data.ToArray(), width, height, 0, 0, width);
+				glyph.Code = code;
+				if (glyph.Code == 0xFFFF)
+				{
+					glyph.Status = Glyph.States.Error;
+					glyphsErr.Add(glyph);
+				}
+				else
+				{
+					glyphs.Add(glyph);
+				}
+				return glyph;
 			}
 
-			void CloseMap()
+			/// <summary>
+			/// Finalize the list of glyphs, filling gaps where possible, and merging in
+			/// glyphs from the error list with dubious code values.
+			/// </summary>
+			/// <param name="glyphs">The main glyph list</param>
+			/// <param name="glyphsErr">The list of error glyphs</param>
+			public void FixGlyphSequence(List<Glyph> glyphs, List<Glyph> glyphsErr)
 			{
-				inMap = false;
+				// sort in Code order
+				glyphs.Sort((a, b) => a.Code.CompareTo(b.Code));
+				// build a list of gaps
+				List<(ushort inx, ushort len)> gaps = new();
+				ushort code = glyphs[0].Code;
+				int inxErr = int.MaxValue;
+				foreach (var glyph in glyphs)
+				{
+					if (glyph.Code != code)
+					{
+						var inx = (ushort)glyphs.IndexOf(glyph);
+						var len = (ushort)(glyph.Code - glyphs[inx - 1].Code - 1);
+						if (len > 128)
+						{
+							// if the gap is just too big
+							// stop here and let the rest compress together
+							Trace($"gap fill limit surpassed: {len}");
+							inxErr = inx;
+							break;
+						}
+						gaps.Add((inx, len));
+						// bring the code value up to speed
+						code += len;
+					}
+					code++;
+				}
+				if (glyphs.Count > inxErr)
+				{
+					// mark all the glyphs beyond the large gap
+					foreach (var g in glyphs.Skip(inxErr))
+						g.Status = Glyph.States.Error;
+				}
+				// insert blanks highest first to keep the indices valid
+				gaps.Reverse();
+				foreach ((ushort inx, ushort len) in gaps)
+				{
+					int cnt = len;
+					while (cnt-- > 0)
+					{
+						// insert blank glyphs with just enough xAdvance to show up on the font view
+						var glyph = new Glyph(null, 0, 0, 0, 0, 4) { Status = Glyph.States.Inserted };
+						glyphs.Insert(inx, glyph);
+					}
+				}
+			}
+
+			public (byte[] data, int width, int height) MapLinesToData(List<string> mapLines, ref int mapHeight)
+			{
 				if (mapLines is null || mapLines.Count == 0)
-				{
-					data = null;
-					return;
-				}
+					return (null, 0, 0);
 				if (mapLines.Count == 1 && mapLines[0] == "-")
-				{
-					data = Array.Empty<byte>();
-					return;
-				}
+					return (Array.Empty<byte>(), 0, 0);
 				var width = mapLines.First().Length;
 				var height = mapLines.Count;
 				if (mapHeight == -1)
@@ -695,17 +844,42 @@ namespace GFXFontEditor
 				}
 				else
 				{
-					TraceAssert(height == mapHeight, "map height mismatch for glyph");
+					// try to overcome benign mistakes in map height
+					if (height < mapHeight)
+					{
+						var s = new string('.', width);
+						while (height++ < mapHeight)
+							mapLines.Add(s);
+					}
+					else if (height > mapHeight)
+					{
+						while (height-- > mapHeight)
+						{
+							var s = mapLines.Last();
+							mapLines.RemoveAt(mapLines.Count - 1);
+							TraceAssert(s.All(c => c == '.' || c == '-'), "pruning non-empty map line");
+						}
+					}
 				}
-				data = new byte[(int)Math.Ceiling((width * height) / 8.0)];
+				var data = new byte[(int)Math.Ceiling((width * height) / 8.0)];
 				int inx = 0;
 				byte mask = 0x80;
 				foreach (var l in mapLines)
 				{
-					TraceAssert(l.Length == width, $"map width mismatch for glyph");
+					var line = l;
+					// try to overcome benign mistakes in line width
+					if (line.Length < width)
+					{
+						line += new string('.', width - line.Length);
+					}
+					else if (line.Length > width)
+					{
+						TraceAssert(line[width..].All(c => c == '.' || c == '-'), "trimming non-empty map line bits");
+						line = line[..width];
+					}
 					for (int x = 0; x < width; x++)
 					{
-						if (x < l.Length && l[x] == '@')
+						if (x < line.Length && (line[x] == '@' || line[x] == '#'))
 							data[inx] |= mask;
 						mask >>= 1;
 						if (mask == 0)
@@ -715,227 +889,369 @@ namespace GFXFontEditor
 						}
 					}
 				}
+				return (data, width, height);
 			}
+		}
 
-			void FinishGlyph()
+		/// <summary>
+		/// File parser/loader for DRAW files.
+		/// </summary>
+		class DrawParser : LineParser
+		{
+			public DrawParser(string fileName) : base(fileName) { }
+
+			/// <summary>
+			/// Load a DRAW font file.
+			/// </summary>
+			/// <returns>GfxFont loaded, or null if the load fails.</returns>
+			public GfxFont Load()
 			{
-				CloseMap();
-				if (data is null)
-					return;
+				string line;
+
+				while (true)
+				{
+					line = ReadLine();
+					if (line == null)
+						break;
+					if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#"))
+						continue;
+					if (line.Contains(':'))
+					{
+						// glyph code, with first bitmap line
+						FinishGlyph();
+						var inx = line.IndexOf(":");
+						if (!int.TryParse(line[0..inx], NumberStyles.HexNumber, null, out int code))
+						{
+							Trace($"cannot parse glyph code: [{line[0..inx]}]");
+							continue;
+						}
+						cCode = (ushort)code;
+						// glyph code line may end with a bitmap line
+						var s = line[(inx + 1)..].Trim();
+						if (s.Contains('-') || s.Contains('#'))
+						{
+							mapLines ??= new();
+							mapLines.Add(s);
+						}
+					}
+					else if (line.Contains('-') || line.Contains('#'))
+					{
+						// bitmap line
+						mapLines ??= new();
+						mapLines.Add(line.Trim());
+					}
+					else
+					{
+						// unknown
+						Trace($"invalid line: [{line}]");
+					}
+				}
+
+				FinishGlyph();
+
+				FixGlyphSequence(glyphs, glyphsErr);
+				GfxFont font = new()
+				{
+					FirstCode = glyphs[0].Code,
+					yAdvance = mapHeight
+				};
+				glyphs.AddRange(glyphsErr);
+				foreach (var glyph in glyphs)
+					glyph.Offset(0, -mapHeight);
+				font.AddGlyphs(glyphs);
+				return font;
+			}
+		}
+
+		/// <summary>
+		/// File parser/loader for YAFF files.
+		/// </summary>
+		class YaffParser : LineParser
+		{
+			// font property dictionary
+			readonly Dictionary<string, string> fontDict = new();
+			// glyph property dictionary
+			Dictionary<string, string> glyphDict = null;
+
+			// known glyph properties we process or ignore
+			readonly List<string> glyphPropRemove = new()
+				{
+					"left-bearing",		// use
+					"right-bearing",	// use
+					"right-kerning",
+					"left-kerning",
+					"tag"
+				};
+
+			// known glyph properties we process or ignore
+			readonly List<string> fontPropRemove = new()
+				{
+					"line-height",	// use
+					"shift-up",		// use
+					"name",
+					"spacing",
+					"bounding-box",
+					"family",
+					"point-size",
+					"ascent",		// CONSIDER
+					"descent",		// CONSIDER
+					"cell-size",
+					"encoding",
+					"default-char",
+					"converter",
+					"source-name",
+					"source-format",
+					"history",
+					"foundry",
+					"revision",
+					"size",
+					"copyright",
+					"dpi",
+					"weight",
+					"word-boundary",
+					"raster-size",
+					"source-url",
+					"right-bearing",	// glyph property, seen in bsd-banner.yaff!
+					"left-bearing",		// glyph property, seen in shaston-16.yaff!
+					"direction",
+					"leading",
+					"line-width",
+					"gdos",
+					"bold-smear",
+					"underline-thickness",
+					"font-id",
+					"setwidth",
+					"underline-descent",
+					"superscript-size",
+					"subscript-size",
+					"superscript-offset",
+					"subscript-offset",
+				};
+
+			public YaffParser(string fileName) : base(fileName) { }
+
+			/// <summary>
+			/// Finish glyph processing from the map lines and parsed character code.
+			/// Process any discovered properties for the glyph.
+			/// </summary>
+			/// <returns>The created Glyph</returns>
+			public override Glyph FinishGlyph()
+			{
+				var glyph = base.FinishGlyph();
+				// process any properties for this glyph
 				if (glyphDict is not null)
 				{
+					int xOffset = 0;
+					int xMargin = 0;
+					// consume the properties we use (and understand)
+					if (glyphDict.TryGetValue("left-bearing", out string slb))
+						xOffset = IntParse(slb);
+					if (glyphDict.TryGetValue("right-bearing", out string srb))
+						xMargin = IntParse(srb);
+					// delete the known ones
+					foreach (var prop in glyphPropRemove)
+						glyphDict.Remove(prop);
+					// show those not encountered for further/later consideration
 					foreach (var item in glyphDict)
 					{
 						Trace($"glyph property: {item.Key} = {item.Value}");
 					}
+					glyphDict = null;
+					if (xOffset != 0)
+					{
+						if (!glyph.Bounds.IsEmpty)
+							glyph.Offset(xOffset, 0);
+						glyph.xAdvance = Math.Max(0, glyph.xAdvance + xOffset);
+					}
+					if (xMargin != 0)
+					{
+						glyph.xAdvance = Math.Max(0, glyph.xAdvance + xMargin);
+					}
 				}
-				glyphDict = null;
-				ushort code = 0;
-				if (cCode != 0xFFFF)
-				{
-					code = cCode;
-				}
-				else if (aCode != 0xFFFF)
-				{
-					Trace("using ascii glyph code label");
-					code = aCode;
-				}
-				else if (uCode != 0xFFFF)
-				{
-					Trace("using unicode glyph code label");
-					code = uCode;
-				}
-				else
-				{ 
-					Trace("no glyph code label");
-					code = xCode++;
-				}
-				cCode = 0xFFFF;
-				aCode = 0xFFFF;
-				uCode = 0xFFFF;
-				Glyph glyph;
-				if (data.Length == 0)
-					glyph = new(null, 0, 0, 0, 0, 0);
-				else
-					glyph = new Glyph(data.ToArray(), mapLines.First().Length, mapLines.Count, 0, 0, mapLines.First().Length);
-				mapLines = null;
-				glyph.Code = code;
-				glyphs.Add(glyph);
+				return glyph;
 			}
 
-			while (true)
+			/// <summary>
+			/// Load a YAFF font file.
+			/// </summary>
+			/// <returns>GfxFont loaded, or null if the load fails.</returns>
+			public GfxFont Load()
 			{
-				if (!keepLine)
+				string line = "";
+				bool keepLine = false;
+				bool seenGlyphs = false;
+
+				while (true)
 				{
-					line = file.ReadLine();
-					lineNumber++;
-				}
-				keepLine = false;
-				if (line == null)
-					break;
-				if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#"))
-					continue;
-				if (line.Contains(':'))
-				{
-					// property
-					if (line.StartsWith("':':"))
+					if (!keepLine)
+						line = ReadLine();
+					keepLine = false;
+					if (line == null)
+						break;
+					if (line.Contains(':'))
 					{
-						// glyph label of ':' confuses the key-value split!
-						seenGlyphs = true;
-						FinishGlyph();
-						aCode = ':';
-						continue;
-					}
-					string key = "";
-					string value = "";
-					var propParts = line.Split(':');
-					if (propParts.Length > 0)
-					{
-						key = propParts[0].TrimEnd().ToLower();
-						if (string.IsNullOrWhiteSpace(key))
-							continue;
-						if (propParts.Length > 1)
-							value = propParts[1].Trim();
-					}
-					if (key.Contains(','))
-					{
-						seenGlyphs = true;
-						FinishGlyph();
-						Trace($"glyph label contains comma: [{key}]");
-						continue;
-					}
-					if (key.StartsWith("u+"))
-					{
-						seenGlyphs = true;
-						FinishGlyph();
-						uCode = (ushort)int.Parse(key[2..], NumberStyles.HexNumber);
-					}
-					else if (key.StartsWith("0x"))
-					{
-						seenGlyphs = true;
-						FinishGlyph();
-						cCode = (ushort)int.Parse(key[2..], NumberStyles.HexNumber);
-					}
-					else if (char.IsDigit(key[0]))
-					{
-						seenGlyphs = true;
-						FinishGlyph();
-						cCode = (ushort)int.Parse(key);
-					}
-					else if (key.StartsWith("0o"))
-					{
-						seenGlyphs = true;
-						FinishGlyph();
-						cCode = (ushort)Convert.ToInt16(key[2..], 8);
-						Trace($"glyph label in octal: [{key}] -> {cCode}");
-					}
-					else if (key[0] == '\'')
-					{
-						seenGlyphs = true;
-						FinishGlyph();
-						aCode = key[1];
-					}
-					else if (string.IsNullOrWhiteSpace(key))
-					{
-						Trace("Multiline property!");
-						while (true)
+						// property
+						if (line.StartsWith("':':"))
 						{
-							line = file.ReadLine();
-							lineNumber++;
-							if (line.Contains(':'))
-							{
-								keepLine = true;
-								break;
-							}
-							value += line.Trim();
+							// glyph label of ':' confuses the key-value split!
+							seenGlyphs = true;
+							FinishGlyph();
+							aCode = ':';
+							continue;
 						}
-					}
-					if (!seenGlyphs)
-					{
-						// glyph property
-						fontDict.Add(key, value);
-					}
-					else
-					{
-						// glyph property or label
-						if (!string.IsNullOrWhiteSpace(value))
+						string key = "";
+						string value = "";
+						var propParts = line.Split(':');
+						if (propParts.Length > 0)
+						{
+							key = propParts[0].TrimEnd().ToLower();
+							if (string.IsNullOrWhiteSpace(key))
+								continue;
+							if (propParts.Length > 1)
+								value = propParts[1].Trim();
+						}
+						if (key.Contains(','))
+						{
+							seenGlyphs = true;
+							FinishGlyph();
+							//Trace($"glyph label contains comma: [{key}]");
+							continue;
+						}
+						if (key.StartsWith("u+"))
+						{
+							seenGlyphs = true;
+							FinishGlyph();
+							uCode = (ushort)IntParse(key[2..], NumberStyles.HexNumber);
+						}
+						else if (key.StartsWith("0x"))
+						{
+							seenGlyphs = true;
+							FinishGlyph();
+							cCode = (ushort)IntParse(key[2..], NumberStyles.HexNumber);
+						}
+						else if (key.StartsWith("0o"))
+						{
+							seenGlyphs = true;
+							FinishGlyph();
+							try
+							{
+								cCode = (ushort)Convert.ToInt16(key[2..], 8);
+							}
+							catch { cCode = 0; }
+						}
+						else if (char.IsDigit(key[0]))
+						{
+							seenGlyphs = true;
+							FinishGlyph();
+							cCode = (ushort)IntParse(key);
+						}
+						else if (key[0] == '\'' || key[0] == '"')
+						{
+							seenGlyphs = true;
+							FinishGlyph();
+							if (key.Length == 3 && key[2] == key[0])
+								aCode = key[1];
+							else
+								Trace($"Malformed glyph ascii code: [{key}]");
+						}
+						else if (char.IsLetter(key[0]) && string.IsNullOrEmpty(value))
+						{
+							seenGlyphs = true;
+							FinishGlyph();
+							glyphDict ??= new();
+							// no consistently meaningful way to address glyph tags
+							if (!glyphDict.TryAdd("tag", key))
+								Trace($"extra glyph tag: {key}");
+						}
+						else if (string.IsNullOrWhiteSpace(value))
+						{
+							// Multiline property
+							while (true)
+							{
+								line = ReadLine();
+								if (string.IsNullOrWhiteSpace(line))
+									break;
+								if (line.Contains(':'))
+								{
+									keepLine = true;
+									break;
+								}
+								value += line.Trim() + " ";
+							}
+						}
+						if (!seenGlyphs)
 						{
 							// glyph property
-							glyphDict ??= new();
-							glyphDict.Add(key, value);
+							if (!fontDict.TryAdd(key, value))
+							{
+								Trace($"duplicate font property key: {key}");
+							}
 						}
 						else
 						{
-							// glyph label
+							// glyph property or label
+							if (!string.IsNullOrWhiteSpace(value))
+							{
+								// glyph property
+								glyphDict ??= new();
+								key = key.Trim();
+								if (!glyphDict.TryAdd(key, value))
+								{
+									Trace($"duplicate glyph property key: {key}");
+								}
+							}
+							else
+							{
+								// glyph label
+							}
+						}
+					}
+					else
+					{
+						// not property or label
+						if (line.Trim() == "-")
+						{
+							TraceAssert(mapLines == null, "encountered blank map indicator inside map");
+							mapLines = new() { "-" };
+						}
+						else if (line.Contains('.') || line.Contains('@'))
+						{
+							mapLines ??= new();
+							mapLines.Add(line.Trim());
 						}
 					}
 				}
-				else
+				FinishGlyph();
+				// finish up the font, organizing and adding glyphs
+				// CONSIDER: better understanding of the font metrics
+				//		and their combinations!
+				int yAdvance = 0;
+				if (fontDict.TryGetValue("line-height", out string slh))
 				{
-					// not property or label
-					if (line.Trim() == "-")
-					{
-						TraceAssert(!inMap, "encountered blank map indicator inside map");
-						OpenMap();
-						mapLines.Add("-");
-					}
-					else if (line.Contains('.') || line.Contains('@'))
-					{
-						OpenMap();
-						mapLines.Add(line.Trim());
-					}
+					yAdvance = IntParse(slh);
 				}
-			}
-			FinishGlyph();
-			//if (fontDict is not null)
-			//{
-			//	foreach (var item in fontDict)
-			//	{
-			//		Trace($"font property: {item.Key} = {item.Value}");
-			//	}
-			//}
-			int yAdvance = 0;
-			if (fontDict.TryGetValue("shift-up", out string s))
-			{
-				int shiftUp;
-				shiftUp = int.Parse(s);
-				yAdvance = mapHeight + shiftUp;
-			}
-			if (yAdvance == 0)
-				yAdvance = mapHeight;
-			glyphs.Sort((a,b) => a.Code.CompareTo(b.Code));
-			GfxFont font = new()
-			{
-				FirstCode = glyphs[0].Code,
-				yAdvance = yAdvance
-			};
-			ushort code = glyphs[0].Code;
-			List<int> missingCodes = new();
-			int missCnt = (glyphs.Last().Code - code + 1) - glyphs.Count;
-			foreach (var glyph in glyphs)
-			{
-				glyph.Offset(0, -yAdvance);
-				if (glyph.Code != code)
+				else if (fontDict.TryGetValue("shift-up", out string ssu))
 				{
-					while (glyph.Code != code)
-					{
-						missingCodes.Add(glyphs.IndexOf(glyph));
-						code++;
-					}
+					yAdvance = mapHeight + IntParse(ssu);
 				}
-				code++;
+				foreach (var prop in fontPropRemove)
+					fontDict.Remove(prop);
+				// show those not encountered for further/later consideration
+				foreach (var item in fontDict)
+					Trace($"font property: {item.Key} = {item.Value}");
+				if (yAdvance <= 0)
+					yAdvance = mapHeight;
+				FixGlyphSequence(glyphs, glyphsErr);
+				glyphs.AddRange(glyphsErr);
+				glyphs.ForEach(g => g.Offset(0, -yAdvance));
+				GfxFont font = new()
+				{
+					FirstCode = glyphs[0].Code,
+					yAdvance = yAdvance
+				};
+				font.AddGlyphs(glyphs);
+				return font;
 			}
-			TraceAssert(missingCodes.Count == missCnt, "missing glyph count mismatch");
-			font.AddGlyphs(glyphs);
-			int maxAdv = font.MaxAdvance;
-			missingCodes.Reverse();
-			foreach (var inx in missingCodes)
-			{
-				var glyph = new Glyph(null, 0, 0, 0, 0, maxAdv);
-				glyph.SetRect(maxAdv, yAdvance);
-				font.InsertAt(inx, glyph);
-			}
-			return font;
 		}
 
 		/// <summary>
@@ -1040,7 +1356,10 @@ namespace GFXFontEditor
 						font = LoadHFile(fileName);
 						break;
 					case ".yaff":
-						font = LoadYaffFile(fileName);
+						font = new YaffParser(fileName).Load();
+						break;
+					case ".draw":
+						font = new DrawParser(fileName).Load();
 						break;
 					case ".gfxfntx":
 						font = LoadXmlFile(fileName);

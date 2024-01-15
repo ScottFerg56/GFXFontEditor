@@ -1,4 +1,5 @@
-﻿using System.Xml.Linq;
+﻿using System.Diagnostics;
+using System.Xml.Linq;
 
 namespace GFXFontEditor
 {
@@ -6,6 +7,7 @@ namespace GFXFontEditor
 	/// A class representing the Glyph data represented by the GFXglyph structure
 	/// in the Adafruit GFX Library.
 	/// </summary>
+	[DebuggerDisplay("Glyph Code: {Code}")]
 	public class Glyph : SparseMap
 	{
 		/*
@@ -39,6 +41,10 @@ namespace GFXFontEditor
 		/// The offset in the y axis for drawing the character cell.
 		/// </summary>
 		public int yOffset => Bounds.Y;
+
+		public enum States { Normal, Inserted, Error};
+
+		public States Status = States.Normal;
 
 		/// <summary>
 		/// Glyph constructor.
