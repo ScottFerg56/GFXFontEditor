@@ -7,6 +7,8 @@ improvements to YAFF file loading
 DRAW files, code sharing with YAFF
 
 TODO:
+	rethink yaff font/glyph metrics, especially yAdvance/line-height
+		per-glyph or font properties like shift-up
 	listViewGlyphs command to add glyph to sample text
 	test on non-magnified windows
 	github

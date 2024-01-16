@@ -836,47 +836,15 @@ namespace GFXFontEditor
 					return (null, 0, 0);
 				if (mapLines.Count == 1 && mapLines[0] == "-")
 					return (Array.Empty<byte>(), 0, 0);
-				var width = mapLines.First().Length;
+				var width = mapLines.Max(l => l.Length);
 				var height = mapLines.Count;
-				if (mapHeight == -1)
-				{
-					mapHeight = height;
-				}
-				else
-				{
-					// try to overcome benign mistakes in map height
-					if (height < mapHeight)
-					{
-						var s = new string('.', width);
-						while (height++ < mapHeight)
-							mapLines.Add(s);
-					}
-					else if (height > mapHeight)
-					{
-						while (height-- > mapHeight)
-						{
-							var s = mapLines.Last();
-							mapLines.RemoveAt(mapLines.Count - 1);
-							TraceAssert(s.All(c => c == '.' || c == '-'), "pruning non-empty map line");
-						}
-					}
-				}
+				mapHeight = Math.Max(mapHeight, height);
 				var data = new byte[(int)Math.Ceiling((width * height) / 8.0)];
 				int inx = 0;
 				byte mask = 0x80;
 				foreach (var l in mapLines)
 				{
 					var line = l;
-					// try to overcome benign mistakes in line width
-					if (line.Length < width)
-					{
-						line += new string('.', width - line.Length);
-					}
-					else if (line.Length > width)
-					{
-						TraceAssert(line[width..].All(c => c == '.' || c == '-'), "trimming non-empty map line bits");
-						line = line[..width];
-					}
 					for (int x = 0; x < width; x++)
 					{
 						if (x < line.Length && (line[x] == '@' || line[x] == '#'))
@@ -978,8 +946,10 @@ namespace GFXFontEditor
 				{
 					"left-bearing",		// use
 					"right-bearing",	// use
+					"shift-up",			// use?!
 					"right-kerning",
 					"left-kerning",
+					"scalable-width",
 					"tag"
 				};
 
@@ -1039,34 +1009,33 @@ namespace GFXFontEditor
 			{
 				var glyph = base.FinishGlyph();
 				// process any properties for this glyph
-				if (glyphDict is not null)
+				if (glyph is null || glyphDict is null)
+					return glyph;
+				int xOffset = 0;
+				int xMargin = 0;
+				// consume the properties we use (and understand)
+				if (glyphDict.TryGetValue("left-bearing", out string slb))
+					xOffset = IntParse(slb);
+				if (glyphDict.TryGetValue("right-bearing", out string srb))
+					xMargin = IntParse(srb);
+				// delete the known ones
+				foreach (var prop in glyphPropRemove)
+					glyphDict.Remove(prop);
+				// show those not encountered for further/later consideration
+				foreach (var item in glyphDict)
 				{
-					int xOffset = 0;
-					int xMargin = 0;
-					// consume the properties we use (and understand)
-					if (glyphDict.TryGetValue("left-bearing", out string slb))
-						xOffset = IntParse(slb);
-					if (glyphDict.TryGetValue("right-bearing", out string srb))
-						xMargin = IntParse(srb);
-					// delete the known ones
-					foreach (var prop in glyphPropRemove)
-						glyphDict.Remove(prop);
-					// show those not encountered for further/later consideration
-					foreach (var item in glyphDict)
-					{
-						Trace($"glyph property: {item.Key} = {item.Value}");
-					}
-					glyphDict = null;
-					if (xOffset != 0)
-					{
-						if (!glyph.Bounds.IsEmpty)
-							glyph.Offset(xOffset, 0);
-						glyph.xAdvance = Math.Max(0, glyph.xAdvance + xOffset);
-					}
-					if (xMargin != 0)
-					{
-						glyph.xAdvance = Math.Max(0, glyph.xAdvance + xMargin);
-					}
+					Trace($"glyph property: {item.Key} = {item.Value}");
+				}
+				glyphDict = null;
+				if (xOffset != 0)
+				{
+					if (!glyph.Bounds.IsEmpty)
+						glyph.Offset(xOffset, 0);
+					glyph.xAdvance = Math.Max(0, glyph.xAdvance + xOffset);
+				}
+				if (xMargin != 0)
+				{
+					glyph.xAdvance = Math.Max(0, glyph.xAdvance + xMargin);
 				}
 				return glyph;
 			}
@@ -1370,6 +1339,11 @@ namespace GFXFontEditor
 					default:
 						MessageBox.Show("Unsupported file extension for open");
 						return null;
+				}
+				if (font is null)
+				{
+					MessageBox.Show(fileName, "Load File Failure", MessageBoxButtons.OK, MessageBoxIcon.Error);
+					return null;
 				}
 				font.FullPathName = fileName;
 				return font;
