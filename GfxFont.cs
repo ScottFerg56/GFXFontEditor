@@ -1,6 +1,5 @@
 ﻿using System.Collections.ObjectModel;
 using System.Diagnostics;
-using System.Drawing;
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -666,7 +665,7 @@ namespace GFXFontEditor
 			}
 
 			/// <summary>
-			/// Read a line from the file, absorbing blank and comment lines.
+			/// Read a line from the file, absorbing comment lines.
 			/// </summary>
 			/// <returns>The line read</returns>
 			public string ReadLine()
@@ -677,7 +676,7 @@ namespace GFXFontEditor
 					lineNumber++;
 					if (line == null)
 						return null;
-					if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#"))
+					if (line.StartsWith("#"))
 						continue;
 					return line;
 				}
@@ -828,9 +827,10 @@ namespace GFXFontEditor
 						glyphs.Insert(inx, glyph);
 					}
 				}
+				glyphs.AddRange(glyphsErr);
 			}
 
-			public (byte[] data, int width, int height) MapLinesToData(List<string> mapLines, ref int mapHeight)
+			public static (byte[] data, int width, int height) MapLinesToData(List<string> mapLines, ref int mapHeight)
 			{
 				if (mapLines is null || mapLines.Count == 0)
 					return (null, 0, 0);
@@ -879,6 +879,8 @@ namespace GFXFontEditor
 				while (true)
 				{
 					line = ReadLine();
+					if (string.IsNullOrWhiteSpace(line))
+						continue;
 					if (line == null)
 						break;
 					if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#"))
@@ -1047,137 +1049,116 @@ namespace GFXFontEditor
 			public GfxFont Load()
 			{
 				string line = "";
-				bool keepLine = false;
-				bool seenGlyphs = false;
 
-				while (true)
+				(string key, string value) ParseProperty()
 				{
-					if (!keepLine)
-						line = ReadLine();
-					keepLine = false;
-					if (line == null)
-						break;
-					if (line.Contains(':'))
+					var i = line.IndexOf(':');
+					var key = line[..i];
+					var value = line[(i + 1)..];
+					if (string.IsNullOrWhiteSpace(value))
 					{
-						// property
-						if (line.StartsWith("':':"))
+						// multiline value
+						line = ReadLine();
+						while (true)
 						{
-							// glyph label of ':' confuses the key-value split!
-							seenGlyphs = true;
-							FinishGlyph();
-							aCode = ':';
-							continue;
-						}
-						string key = "";
-						string value = "";
-						var propParts = line.Split(':');
-						if (propParts.Length > 0)
-						{
-							key = propParts[0].TrimEnd().ToLower();
-							if (string.IsNullOrWhiteSpace(key))
-								continue;
-							if (propParts.Length > 1)
-								value = propParts[1].Trim();
-						}
-						if (key.Contains(','))
-						{
-							seenGlyphs = true;
-							FinishGlyph();
-							//Trace($"glyph label contains comma: [{key}]");
-							continue;
-						}
-						if (key.StartsWith("u+"))
-						{
-							seenGlyphs = true;
-							FinishGlyph();
-							uCode = (ushort)IntParse(key[2..], NumberStyles.HexNumber);
-						}
-						else if (key.StartsWith("0x"))
-						{
-							seenGlyphs = true;
-							FinishGlyph();
-							cCode = (ushort)IntParse(key[2..], NumberStyles.HexNumber);
-						}
-						else if (key.StartsWith("0o"))
-						{
-							seenGlyphs = true;
-							FinishGlyph();
-							try
-							{
-								cCode = (ushort)Convert.ToInt16(key[2..], 8);
-							}
-							catch { cCode = 0; }
-						}
-						else if (char.IsDigit(key[0]))
-						{
-							seenGlyphs = true;
-							FinishGlyph();
-							cCode = (ushort)IntParse(key);
-						}
-						else if (key[0] == '\'' || key[0] == '"')
-						{
-							seenGlyphs = true;
-							FinishGlyph();
-							if (key.Length == 3 && key[2] == key[0])
-								aCode = key[1];
-							else
-								Trace($"Malformed glyph ascii code: [{key}]");
-						}
-						else if (char.IsLetter(key[0]) && string.IsNullOrEmpty(value))
-						{
-							seenGlyphs = true;
-							FinishGlyph();
-							glyphDict ??= new();
-							// no consistently meaningful way to address glyph tags
-							if (!glyphDict.TryAdd("tag", key))
-								Trace($"extra glyph tag: {key}");
-						}
-						else if (string.IsNullOrWhiteSpace(value))
-						{
-							// Multiline property
-							while (true)
-							{
-								line = ReadLine();
-								if (string.IsNullOrWhiteSpace(line))
-									break;
-								if (line.Contains(':'))
-								{
-									keepLine = true;
-									break;
-								}
-								value += line.Trim() + " ";
-							}
-						}
-						if (!seenGlyphs)
-						{
-							// glyph property
-							if (!fontDict.TryAdd(key, value))
-							{
-								Trace($"duplicate font property key: {key}");
-							}
-						}
-						else
-						{
-							// glyph property or label
-							if (!string.IsNullOrWhiteSpace(value))
-							{
-								// glyph property
-								glyphDict ??= new();
-								key = key.Trim();
-								if (!glyphDict.TryAdd(key, value))
-								{
-									Trace($"duplicate glyph property key: {key}");
-								}
-							}
-							else
-							{
-								// glyph label
-							}
+							// all additional lines must start with whitespace
+							if (string.IsNullOrEmpty(line) || !char.IsWhiteSpace(line[0]))
+								break;
+							value += line.Trim() + " ";
+							line = ReadLine();
 						}
 					}
 					else
 					{
-						// not property or label
+						line = ReadLine();
+					}
+					key = key.Trim().ToLower().Replace("_", "-");
+					return (key, value.Trim());
+				}
+
+				// first non-blank/comment line starts font properties
+				do
+				{
+					line = ReadLine();
+					if (line is null)
+						break;
+				} while (string.IsNullOrWhiteSpace(line));
+
+				// parse the font properties
+				while (line is not null)
+				{
+					if (!line.Contains(':'))
+						break;
+					var (key, value) = ParseProperty();
+					if (!fontDict.TryAdd(key, value))
+					{
+						Trace($"duplicate font property key: {key}");
+					}
+				}
+
+				// parse the glyphs
+				while (line is not null)
+				{
+					// parse glyph labels
+					while (line is not null)
+					{
+						// property labels
+						// labels may have multiple values or characters (a grapheme sequence)
+						// here using only the first as a single codepoint value
+						if (string.IsNullOrWhiteSpace(line))
+						{
+							// ignore blank lines
+						}
+						else if (line[0] == '"')
+						{
+							// ignoring tag labels
+						}
+						else if (line[0] == '\'')
+						{
+							// character label
+							if (line.Length > 1)
+								aCode = line[1];
+						}
+						else if (line.StartsWith("u+"))
+						{
+							// unicode label
+							if (line.Length > 2)
+								uCode = (ushort)IntParse(line[2..].Split(',', ':')[0], NumberStyles.HexNumber);
+						}
+						else if (line.StartsWith("0x"))
+						{
+							// hex label
+							if (line.Length > 2)
+								cCode = (ushort)IntParse(line[2..].Split(',', ':')[0], NumberStyles.HexNumber);
+						}
+						else if (line.StartsWith("0o"))
+						{
+							// octal label
+							if (line.Length > 2)
+							{
+								try
+								{
+									cCode = (ushort)Convert.ToInt16(line[2..].Split(',', ':')[0], 8);
+								}
+								catch { cCode = 0; }
+							}
+						}
+						else if (char.IsDigit(line[0]))
+						{
+							// decimal label
+							cCode = (ushort)IntParse(line.Split(',', ':')[0]);
+						}
+						else
+						{
+							break;
+						}
+						line = ReadLine();
+					}
+					// parse glyph definition lines (mapLines)
+					while (line is not null)
+					{
+						if (line.Length == 0 || !char.IsWhiteSpace(line[0]))
+							break;
 						if (line.Trim() == "-")
 						{
 							TraceAssert(mapLines == null, "encountered blank map indicator inside map");
@@ -1188,7 +1169,32 @@ namespace GFXFontEditor
 							mapLines ??= new();
 							mapLines.Add(line.Trim());
 						}
+						else
+						{
+							break;
+						}
+						line = ReadLine();
 					}
+					// parse glyph properties
+					while (line is not null)
+					{
+						if (string.IsNullOrWhiteSpace(line))
+						{
+							line = ReadLine();
+							continue;
+						}
+						if (!char.IsWhiteSpace(line[0]))
+							break;
+						if (!line.Contains(':'))
+							break;
+						var (key, value) = ParseProperty();
+						glyphDict ??= new();
+						if (!glyphDict.TryAdd(key, value))
+						{
+							Trace($"duplicate glyph property key: {key}");
+						}
+					}
+					FinishGlyph();
 				}
 				FinishGlyph();
 				// finish up the font, organizing and adding glyphs
