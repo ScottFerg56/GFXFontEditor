@@ -240,7 +240,7 @@
 			// 
 			splitContainer1.Panel2.Controls.Add(listViewGlyphs);
 			splitContainer1.Size = new Size(1729, 862);
-			splitContainer1.SplitterDistance = 1137;
+			splitContainer1.SplitterDistance = 1104;
 			splitContainer1.TabIndex = 1;
 			// 
 			// pictureBoxGlyph
@@ -249,7 +249,7 @@
 			pictureBoxGlyph.Dock = DockStyle.Fill;
 			pictureBoxGlyph.Location = new Point(0, 0);
 			pictureBoxGlyph.Name = "pictureBoxGlyph";
-			pictureBoxGlyph.Size = new Size(1137, 862);
+			pictureBoxGlyph.Size = new Size(1104, 862);
 			pictureBoxGlyph.TabIndex = 0;
 			pictureBoxGlyph.TabStop = false;
 			pictureBoxGlyph.Paint += pictureBoxGlyph_Paint;
@@ -268,11 +268,12 @@
 			listViewGlyphs.GridLines = true;
 			listViewGlyphs.Location = new Point(0, 0);
 			listViewGlyphs.Name = "listViewGlyphs";
-			listViewGlyphs.Size = new Size(588, 862);
+			listViewGlyphs.Size = new Size(621, 862);
 			listViewGlyphs.TabIndex = 0;
 			listViewGlyphs.UseCompatibleStateImageBehavior = false;
 			listViewGlyphs.View = View.Details;
 			listViewGlyphs.SelectedIndexChanged += listViewGlyphs_SelectedIndexChanged;
+			listViewGlyphs.KeyDown += listViewGlyphs_KeyDown;
 			listViewGlyphs.KeyUp += listViewGlyphs_KeyUp;
 			// 
 			// columnHeader1
@@ -283,7 +284,7 @@
 			// columnHeader2
 			// 
 			columnHeader2.Text = "Code";
-			columnHeader2.Width = 75;
+			columnHeader2.Width = 110;
 			// 
 			// columnHeader3
 			// 

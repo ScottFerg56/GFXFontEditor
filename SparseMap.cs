@@ -10,6 +10,8 @@
 		/// </summary>
 		protected List<Point> Points = new();
 
+		public SparseMap() { }
+
 		/// <summary>
 		/// SparseMap constructor.
 		/// </summary>
@@ -152,6 +154,8 @@
 		/// <param name="y">Y offset for each pixel</param>
 		public void Offset(int x, int y)
 		{
+			if (x == 0 && y == 0)
+				return;
 			List<Point> pts = new();
 			foreach (Point p in Points)
 			{

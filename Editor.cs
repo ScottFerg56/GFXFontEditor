@@ -1,9 +1,3 @@
-/*
- https://glenviewsoftware.com/projects/products/adafonteditor/adafruit-gfx-font-format/
- https://github.com/robhagemans/monobit
- .yaff format: https://github.com/robhagemans/hoard-of-bitfonts
-*/
-
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
@@ -575,7 +569,7 @@ namespace GFXFontEditor
 		/// <summary>
 		/// The left and right extent along the text line for each printed Glyph in the pictureBoxFontView.
 		/// </summary>
-		List<(int left, int right)> boundsFontView;
+		List<(int left, int right)> boundsFontView = new();
 
 		/// <summary>
 		/// Prepare the bitmap display image of sample text for the pictureBoxFontView.
@@ -765,11 +759,40 @@ namespace GFXFontEditor
 
 		}
 
-		/// <summary>
-		/// Update the text display of the ListViewItem for a glyph.
-		/// </summary>
-		/// <param name="glyph">The glyph</param>
-		void UpdateGlyphItem(Glyph glyph)
+		private void listViewGlyphs_KeyDown(object sender, KeyEventArgs e)
+		{
+			switch (e.KeyCode)
+			{
+				case Keys.Left:
+					{
+						var item = listViewGlyphs.FocusedItem;
+						if (item is null || item.Index <= 0)
+							break;
+						listViewGlyphs.FocusedItem = listViewGlyphs.Items[item.Index - 1];
+						listViewGlyphs.SelectedIndices.Clear();
+						listViewGlyphs.SelectedIndices.Add(item.Index - 1);
+						listViewGlyphs.EnsureVisible(item.Index - 1);
+						break;
+					}
+				case Keys.Right:
+					{
+						var item = listViewGlyphs.FocusedItem;
+						if (item is null || item.Index >= listViewGlyphs.Items.Count - 1)
+							break;
+						listViewGlyphs.FocusedItem = listViewGlyphs.Items[item.Index + 1];
+						listViewGlyphs.SelectedIndices.Clear();
+						listViewGlyphs.SelectedIndices.Add(item.Index + 1);
+						listViewGlyphs.EnsureVisible(item.Index + 1);
+					}
+					break;
+			}
+		}
+
+			/// <summary>
+			/// Update the text display of the ListViewItem for a glyph.
+			/// </summary>
+			/// <param name="glyph">The glyph</param>
+			void UpdateGlyphItem(Glyph glyph)
 		{
 			if (glyph is null)
 				return;
@@ -791,7 +814,7 @@ namespace GFXFontEditor
 					break;
 			}
 			item.SubItems[0].Text = $"{c}";
-			item.SubItems[1].Text = $"0x{glyph.Code:X2}";
+			item.SubItems[1].Text = $"0x{glyph.Code:X2} : {glyph.Code}";
 			item.SubItems[2].Text = $"{glyph.Width}";
 			item.SubItems[3].Text = $"{glyph.Height}";
 			item.SubItems[4].Text = $"{glyph.xAdvance}";
@@ -804,8 +827,10 @@ namespace GFXFontEditor
 		/// </summary>
 		void UpdateAllGlyphItems()
 		{
+			listViewGlyphs.BeginUpdate();
 			foreach (var glyph in CurrentFont.Glyphs)
 				UpdateGlyphItem(glyph);
+			listViewGlyphs.EndUpdate();
 			OnChange();
 		}
 
@@ -832,6 +857,10 @@ namespace GFXFontEditor
 		void SetFont(GfxFont font)
 		{
 			CurrentFont = font;
+			if (font.FirstCode > UpDownFirstCode.Maximum)
+				font.FirstCode = (ushort)UpDownFirstCode.Maximum;
+			UpDownFirstCode.Value = font.FirstCode;
+			listViewGlyphs.BeginUpdate();
 			listViewGlyphs.Items.Clear();
 			foreach (var glyph in font.Glyphs)
 			{
@@ -842,10 +871,8 @@ namespace GFXFontEditor
 						Tag = glyph
 					});
 			}
-			if (font.FirstCode > UpDownFirstCode.Maximum)
-				font.FirstCode = (ushort)UpDownFirstCode.Maximum;
-			UpDownFirstCode.Value = font.FirstCode;
 			UpdateAllGlyphItems();
+			listViewGlyphs.EndUpdate();
 			toolStripLabelHeight.Text = $"Line Height: {CurrentFont.yAdvance}";
 			RecalcDesignSpace();
 			if (font.Glyphs.Any())
