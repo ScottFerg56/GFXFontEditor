@@ -18,10 +18,48 @@ namespace GFXFontEditor
 		/// <returns>GfxFont loaded, or null if the load fails.</returns>
 		public static GfxFont Load(string fileName)
 		{
+			/*
+				**** The C structures defining the glyphs and font are:
+
+				/// Font data stored PER GLYPH
+				typedef struct {
+				  uint16_t bitmapOffset; ///< Pointer into GFXfont->bitmap
+				  uint8_t width;         ///< Bitmap dimensions in pixels
+				  uint8_t height;        ///< Bitmap dimensions in pixels
+				  uint8_t xAdvance;      ///< Distance to advance cursor (x axis)
+				  int8_t xOffset;        ///< X dist from cursor pos to UL corner
+				  int8_t yOffset;        ///< Y dist from cursor pos to UL corner
+				} GFXglyph;
+
+				/// Data stored for FONT AS A WHOLE
+				typedef struct {
+				  uint8_t *bitmap;  ///< Glyph bitmaps, concatenated
+				  GFXglyph *glyph;  ///< Glyph array
+				  uint16_t first;   ///< ASCII extents (first char)
+				  uint16_t last;    ///< ASCII extents (last char)
+				  uint8_t yAdvance; ///< Newline distance (y axis)
+				} GFXfont;
+
+				**** The typical C header defining a font looks like:
+
+				const uint8_t font_name_Bitmaps[] PROGMEM = {
+					0xFF, 0xFF...
+					0xFF, 0xFF};
+
+				const GFXglyph font_name_Glyphs[] PROGMEM = {
+					{   0,  0, 0, 10, 0,   1},		// 0x20 ' '
+					...
+					{4491, 15, 6, 18, 1, -10}};		// 0x7E '~'
+
+				const GFXfont font_name_ PROGMEM = {
+					(uint8_t *)font_name_Bitmaps, (GFXglyph *)font_name_Glyphs,
+					0x20, 0x7E, 42};
+			*/
+
 			//
 			// The possible range of C language syntax in a header file representing the construction of a valid
 			// GFXfont is far too complex to parse here.
-			// Parsing done is sufficient to handle the representative samples that are available at the time.
+			// Parsing done is sufficient to handle the representative samples that Adafruit has published at the time.
 			//
 
 			// the basic strategy is to read a line at a time and parse it into tokens as the typical 'words' and symbols found
@@ -40,6 +78,12 @@ namespace GFXFontEditor
 			string line = null;
 			int lineNumber = 0;
 
+			// throw an error exception
+			void Error(string message)
+			{
+				throw new Exception($"[{Path.GetFileName(fileName)}][line:{lineNumber}] {message}");
+			}
+
 			// parse a token from the file
 			string Parse()
 			{
@@ -51,10 +95,7 @@ namespace GFXFontEditor
 						line = file.ReadLine().Trim();
 						lineNumber++;
 						if (line == null)
-						{
-							MessageBox.Show($"Unexpected end of file");
-							return null;
-						}
+							Error($"Unexpected end of file");
 						// ignore empty lines or those with #pragma, #include, etc.
 						if (string.IsNullOrWhiteSpace(line) || line[0] == '#')
 							continue;
@@ -98,29 +139,18 @@ namespace GFXFontEditor
 			}
 
 			// require a given string as the next token
-			bool Accept(string tgt)
+			void Accept(string tgt)
 			{
-				while (true)
-				{
-					string tok = Parse();
-					if (tok == null)
-						return false;
-					if (tok == tgt)
-						return true;
-					if (MessageBox.Show($"Expected '{tgt}', found '{tok}'.\r\n\r\n[{lineNumber}] {line}\r\n\r\nContinue?", "Load Font", MessageBoxButtons.YesNo) == DialogResult.No)
-						return false;
-				}
+				string tok = Parse();
+				if (tok != tgt)
+					Error($"Expected '{tgt}', found '{tok}'");
 			}
 
 			// require a sequence of strings as the next tokens
-			bool AcceptAll(params string[] tgts)
+			void AcceptAll(params string[] tgts)
 			{
 				foreach (var tgt in tgts)
-				{
-					if (!Accept(tgt))
-						return false;
-				}
-				return true;
+					Accept(tgt);
 			}
 
 			// return true if the next token matches the expected string
@@ -145,31 +175,24 @@ namespace GFXFontEditor
 			}
 
 			// parse the next token as a number
-			bool Number(out int val)
+			void Number(out int val)
 			{
 				val = 0;
 				// allow the user to ignore reported errors and keep trying
-				while (true)
+				var tok = Parse();
+				var ns = NumberStyles.Integer;
+				if (tok.StartsWith("0x"))
 				{
-					var tok = Parse();
-					if (tok == null)
-						return false;
-					var ns = NumberStyles.Integer;
-					if (tok.StartsWith("0x"))
-					{
-						// hex number
-						tok = tok[2..];
-						ns = NumberStyles.HexNumber;
-					}
-					if (int.TryParse(tok, ns, NumberFormatInfo.CurrentInfo, out val))
-						return true;
-					if (MessageBox.Show($"Expected number, found {tok}. Continue?", "Load Font", MessageBoxButtons.YesNo) == DialogResult.No)
-						return false;
+					// hex number
+					tok = tok[2..];
+					ns = NumberStyles.HexNumber;
 				}
+				if (!int.TryParse(tok, ns, NumberFormatInfo.CurrentInfo, out val))
+					Error($"Expected number, found {tok}");
 			}
 
 			// parse a comma-separated number list
-			bool NumberList(out List<int> vals)
+			void NumberList(out List<int> vals)
 			{
 				vals = new();
 				// allow the user to ignore reported errors and keep trying
@@ -177,47 +200,41 @@ namespace GFXFontEditor
 				{
 					// end of list?
 					if (Peek("}"))
-						return true;
-					if (!Number(out int val))
-						return false;
+						return;
+					Number(out int val);
 					vals.Add(val);
 					// technically, we should see a comma between numbers, but...
-					// we won't care if it works!
-					// exit if end of list
 					if (!Optional(","))
-						return true;
+						return;
 				}
 			}
 
 			// parse the initialization for a GFXglyph structure, e.g.
 			// {0, 3, 11, 11, 4, -10}
-			bool ParseGlyph(out List<int> glyph)
+			void ParseGlyph(out List<int> glyph)
 			{
 				glyph = new();
-				if (!Accept("{"))
-					return false;
-				if (!NumberList(out glyph))
-					return false;
-				return Accept("}");
+				Accept("{");
+				NumberList(out glyph);
+				Accept("}");
 			}
 
 			// parse a list of initializations for GFXglyph structures
-			bool GlyphList(out List<List<int>> glyphs)
+			void GlyphList(out List<List<int>> glyphs)
 			{
 				glyphs = new();
 				while (true)
 				{
 					// end of list?
 					if (Peek("}"))
-						return true;
-					if (!ParseGlyph(out List<int> glyph))
-						return false;
+						return;
+					ParseGlyph(out List<int> glyph);
 					glyphs.Add(glyph);
 					// technically, we should see a comma between glyphs, but...
-					// we won't care if it works!
+					// we won't care, if it works!
 					// exit if end of list
 					if (!Optional(","))
-						return true;
+						return;
 				}
 			}
 
@@ -226,26 +243,19 @@ namespace GFXFontEditor
 			// const uint8_t <>Bitmaps[] PROGMEM = { <comma-separated-numbers> };
 			//
 
-			if (!AcceptAll("const", "uint8_t"))
-				return null;
+			AcceptAll("const", "uint8_t");
 
 			var bmpArrayName = Parse();
-			if (bmpArrayName == null)
-				return null;
 
-			if (!AcceptAll("[", "]"))
-				return null;
+			AcceptAll("[", "]");
 
 			Optional("PROGMEM");
 
-			if (!AcceptAll("=", "{"))
-				return null;
+			AcceptAll("=", "{");
 
-			if (!NumberList(out List<int> bmpValues))
-				return null;
+			NumberList(out List<int> bmpValues);
 
-			if (!AcceptAll("}", ";"))
-				return null;
+			AcceptAll("}", ";");
 
 			//
 			// parsing glyph array:
@@ -254,26 +264,19 @@ namespace GFXFontEditor
 			// { <number>, <number>, <number>, <number>, <number>, <number> }
 			//
 
-			if (!AcceptAll("const", "GFXglyph"))
-				return null;
+			AcceptAll("const", "GFXglyph");
 
 			var glyphArrayName = Parse();
-			if (glyphArrayName == null)
-				return null;
 
-			if (!AcceptAll("[", "]"))
-				return null;
+			AcceptAll("[", "]");
 
 			Optional("PROGMEM");
 
-			if (!AcceptAll("=", "{"))
-				return null;
+			AcceptAll("=", "{");
 
-			if (!GlyphList(out List<List<int>> glyphs))
-				return null;
+			GlyphList(out List<List<int>> glyphs);
 
-			if (!AcceptAll("}", ";"))
-				return null;
+			AcceptAll("}", ";");
 
 			//
 			// parsing font structure:
@@ -283,52 +286,35 @@ namespace GFXFontEditor
 			// <number>, <number>, <number>};
 			//
 
-			if (!AcceptAll("const", "GFXfont"))
-				return null;
+			AcceptAll("const", "GFXfont");
 
 			var fontName = Parse();
-			if (fontName == null)
-				return null;
 
 			Optional("PROGMEM");
 
-			if (!AcceptAll("=", "{"))
-				return null;
+			AcceptAll("=", "{");
 
 			// this cast always seems to be there, but may actually not be required?
 			if (Optional("("))
-			{
-				if (!AcceptAll("uint8_t", "*", ")"))
-					return null;
-			}
+				AcceptAll("uint8_t", "*", ")");
 
 			// note: we don't really care if this name matches, but...
-			if (!Accept(bmpArrayName) || !Accept(","))
-				return null;
+			AcceptAll(bmpArrayName, ",");
 
 			// this cast always seems to be there, but may actually not be required?
 			if (Optional("("))
-			{
-				if (!AcceptAll("GFXglyph", "*", ")"))
-					return null;
-			}
+				AcceptAll("GFXglyph", "*", ")");
 
 			// note: we don't really care if this name matches, but...
-			if (!AcceptAll(glyphArrayName, ","))
-				return null;
+			AcceptAll(glyphArrayName, ",");
 
-			if (!NumberList(out List<int> fontVals))
-				return null;
+			NumberList(out List<int> fontVals);
 
 			// I guess we could actually pass on this too!
-			if (!AcceptAll("}", ";"))
-				return null;
+			AcceptAll("}", ";");
 
 			if (fontVals.Count < 3)
-			{
-				MessageBox.Show($"Incomplete GFXFont strtucture");
-				return null;
-			}
+				Error($"Incomplete GFXfont strtucture");
 
 			// build our font structure from the harvested glyph and font data
 			GfxFont font = new()
@@ -341,10 +327,7 @@ namespace GFXFontEditor
 			{
 				var gl = glyphs[i];
 				if (gl.Count < 6)
-				{
-					MessageBox.Show($"Incomplete GFXGlyph structure");
-					return null;
-				}
+					Error($"Incomplete GFXGlyph structure");
 				var offset1 = gl[0];
 				byte[] data = null;
 				if (gl != glyphs.Last())
@@ -361,7 +344,6 @@ namespace GFXFontEditor
 				font.Add(glyph);
 			}
 
-			font.ResetCodes();
 			file.Close();
 			return font;
 		}
