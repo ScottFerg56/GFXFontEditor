@@ -105,7 +105,7 @@ namespace GFXFontEditor
 			return (values[0], values[1], values[2], values[3]);
 		}
 
-#if false
+#if true
 		/// <summary>
 		/// Output a Debug message, with filename and linenumber.
 		/// </summary>
@@ -189,16 +189,16 @@ namespace GFXFontEditor
 					// default to global DWIDTH, if none for glyph
 					var dx = dwidth.x == 0 ? globaldwidth.x : dwidth.x;
 					//var dy = dwidth.y == 0 ? globaldwidth.y : dwidth.y;
-					var code = (ushort)(code_point == -1 ? 0xFFFF : code_point);
-					if (glyphs.Any(g => g.Code == code))
-						code = 0xFFFF;
+					var code = (ushort)((code_point == -1 || code_point > 0xFFFF) ? 0xFFFF : code_point);
+					var dup = code != 0xFFFF && glyphs.Any(g => g.Code == code);
+					TraceAssert(!dup, $"glyph with duplicate code: {code}");
 					// Y offset for glyph:
 					//		move reference from glyph top to origin (bottom)
 					//		then add BBX.Y offset (negative is up!)
 					var glyph = new Glyph(map, bbx.X, -bbx.Y - bbx.Height, dx)
 					{
 						Code = code,
-						Status = code == 0xFFFF ? Glyph.States.Error : Glyph.States.Normal
+						Status = (code == 0xFFFF || dup) ? Glyph.States.Error : Glyph.States.Normal
 					};
 					glyphs.Add(glyph);
 				}
@@ -264,7 +264,6 @@ namespace GFXFontEditor
 
 			GfxFont CreateFont()
 			{
-				GfxFont.FixGaps(glyphs);
 				var avgAdv = glyphs.Average(g => g.xAdvance);
 				foreach (var glyph in glyphs)
 				{
@@ -273,7 +272,6 @@ namespace GFXFontEditor
 				}
 				GfxFont font = new()
 				{
-					FirstCode = glyphs[0].Code,
 					yAdvance = fontBoundingBox.Height
 				};
 				font.AddGlyphs(glyphs);

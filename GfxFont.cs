@@ -26,30 +26,14 @@ namespace GFXFontEditor
 		/// </summary>
 		public string FullPathName;
 
-		protected ushort _FirstCode;
-		/// <summary>
-		/// The character code for the font's first glyph.
-		/// </summary>
-		/// <remarks>
-		/// Each Glyph.Code is based on its position in the font's list relative to the FirstCode.
-		/// The font must maintain these values as Glyphs are added or removed or FirstCode changes.
-		/// </remarks>
-		public ushort FirstCode
-		{
-			get => _FirstCode;
-			set
-			{
-				if (_FirstCode == value)
-					return;
-				_FirstCode = value;
-				ResetCodes();
-			}
-		}
-
 		/// <summary>
 		/// The number of y pixels advanced from the start of one line of charaters to the next.
 		/// </summary>
 		public int yAdvance;
+
+		public ushort StartCode => _Glyphs.FirstOrDefault()?.Code ?? 0;
+
+		public ushort EndCode => _Glyphs.LastOrDefault()?.Code ?? 0;
 
 		protected List<Glyph> _Glyphs = new();
 		/// <summary>
@@ -94,45 +78,38 @@ namespace GFXFontEditor
 		public Rectangle FullBounds => Rectangle.Union(BmpBounds, new Rectangle(0, -yAdvance, MaxAdvance, yAdvance));
 
 		/// <summary>
-		/// Add a glyph to the end of the font.
+		/// Add a glyph to the font, maintaining the sort order by glyph Code.
 		/// </summary>
 		/// <param name="glyph">The glyph to add</param>
-		public void Add(Glyph glyph)
+		public int Add(Glyph glyph)
 		{
-			glyph.Code = (ushort)(FirstCode + _Glyphs.Count);
-			_Glyphs.Add(glyph);
+			if (glyph.Code >= EndCode)
+			{
+				// shortcut to the end
+				_Glyphs.Add(glyph);
+				return _Glyphs.Count - 1;
+			}
+			// find insertion point to keep the list sorted
+			var next = _Glyphs.FirstOrDefault(g => g.Code > glyph.Code);
+			if (next is null)
+			{
+				// shouldn't happen with the above shortcut!
+				Debug.Fail("shouldn't happen");
+				_Glyphs.Add(glyph);
+				return _Glyphs.Count - 1;
+			}
+			var inx = _Glyphs.IndexOf(next);
+			_Glyphs.Insert(inx, glyph);
+			return inx;
 		}
 
 		/// <summary>
 		/// Remove a glyph from the font.
 		/// </summary>
 		/// <param name="glyph">The glyph to remove</param>
-		/// <remarks>
-		/// Removing a glyph causes all of the glyph character codes to be
-		/// reset from the font's FirstCode.
-		/// An exception is made when removing the first glyph, where the
-		/// font's FirstCode is set to the code of the next glyph in the list,
-		/// if such exists.
-		/// </remarks>
 		public void Remove(Glyph glyph)
 		{
-			if (glyph == _Glyphs.FirstOrDefault())
-			{
-				_Glyphs.Remove(glyph);
-				var next = _Glyphs.FirstOrDefault();
-				if (next != null)
-					_FirstCode = next.Code;
-			}
-			else if (glyph == _Glyphs.LastOrDefault())
-			{
-				// opyimize with no need to reset codes
-				_Glyphs.Remove(glyph);
-			}
-			else
-			{
-				_Glyphs.Remove(glyph);
-				ResetCodes();
-			}
+			_Glyphs.Remove(glyph);
 		}
 
 		/// <summary>
@@ -141,28 +118,8 @@ namespace GFXFontEditor
 		/// <param name="glyphs">The glyphs to add</param>
 		public void AddGlyphs(IEnumerable<Glyph> glyphs)
 		{
-			_Glyphs.AddRange(glyphs);
-			ResetCodes();
-		}
-
-		/// <summary>
-		/// Insert a glyph into the list of glyphs.
-		/// </summary>
-		/// <param name="inx">The location to insert the glyph.</param>
-		/// <param name="glyph"></param>
-		/// <remarks>
-		/// Inserting a glyph causes all of the glyph character codes to be
-		/// reset from the font's FirstCode.
-		/// An exception is made when inserting before the first glyph, where the
-		/// font's FirstCode reduced by one and assigned to the new first glyph.
-		/// </remarks>
-		public void InsertAt(int inx, Glyph glyph)
-		{
-			_Glyphs.Insert(inx, glyph);
-			if (inx == 0 && FirstCode > 0 && _Glyphs.Any())
-				glyph.Code = --_FirstCode;
-			else
-				ResetCodes();
+			foreach (var glyph in glyphs)
+				Add(glyph);
 		}
 
 		/// <summary>
@@ -173,16 +130,6 @@ namespace GFXFontEditor
 		{
 			if (_Glyphs.Count > length)
 				_Glyphs.RemoveRange(length, _Glyphs.Count - length);
-		}
-
-		/// <summary>
-		/// Reset each Glyph.Code based on the FirstCode.
-		/// </summary>
-		public void ResetCodes()
-		{
-			var c = FirstCode;
-			foreach (var g in _Glyphs)
-				g.Code = c++;
 		}
 
 		/// <summary>
@@ -291,55 +238,114 @@ namespace GFXFontEditor
 		}
 
 		/// <summary>
-		/// Fill Code gaps where possible in the glyph list.
+		/// Dummy fill Code gaps where possible in a fonts glyph list,
+		/// and assign those with duplicate or missing Codes to free values.
 		/// </summary>
-		/// <param name="glyphs">The glyph list</param>
-		public static void FixGaps(List<Glyph> glyphs)
+		/// <param name="glyphsIn">The glyph list to fix</param>
+		/// <returns>The flattened glyph list</returns>
+		public static List<Glyph> FlattenGlyphList(IEnumerable<Glyph> glyphsIn)
 		{
-			// sort in Code order
-			glyphs.Sort((a, b) => a.Code.CompareTo(b.Code));
-			// build a list of gaps
-			List<(ushort inx, ushort len)> gaps = new();
-			ushort code = glyphs[0].Code;
-			int inxErr = int.MaxValue;
-			foreach (var glyph in glyphs)
+			if (!glyphsIn.Any())
+				return new List<Glyph>();
+			List<Glyph> glyphs = new();
+			List<Glyph> glyphsFill = new();
+			var groups = glyphsIn.GroupBy(g => g.Code);
+			foreach (var group in groups)
 			{
-				if (glyph.Code != code)
+				// move ALL 'bad' codes to the 'fill' list
+				int skip = group.Key == 0xFFFF ? 0 : 1;
+				// and any duplicate codes
+				foreach (var glyph in group.Skip(skip))
 				{
-					var inx = (ushort)glyphs.IndexOf(glyph);
-					var len = (ushort)(glyph.Code - glyphs[inx - 1].Code - 1);
-					if (len > 128)
+					glyph.Status = Glyph.States.Error;
+					glyphsFill.Add(glyph);
+				}
+			}
+			ushort code = groups.First().Key;
+			if (glyphsFill.Any())
+			{
+				// allow fill before the first glyph
+				code = (ushort)Math.Max(0, code - glyphsFill.Count);
+			}
+			bool badGap = false;
+			foreach (var group in groups)
+			{
+				if (group.Key == 0xFFFF)	// already processed
+					break;
+				var first = group.First();
+				var gap = first.Code - code;
+				if (!badGap && gap > 128 && gap > glyphsFill.Count)
+				{
+					badGap = true;
+					Debug.WriteLine($"bad gap {gap} at {first.Code}");
+				}
+				if (badGap)
+				{
+					// we've encountered a 'too big' gap
+					// just compress codes to the end
+					first.Code = code++;
+					first.Status = Glyph.States.Error;
+					glyphs.Add(first);
+				}
+				else
+				{
+					// fill the gap
+					for (ushort i = code; i < first.Code; i++)
 					{
-						// if the gap is just too big
-						// stop here and let the rest compress together
-						Debug.WriteLine($"gap fill limit surpassed: {len}");
-						inxErr = inx;
-						break;
+						Glyph fill;
+						if (glyphsFill.Any())
+						{
+							// fill from the 'bad' list
+							fill = glyphsFill.First();
+							fill.Code = i;
+							fill.Status = Glyph.States.Error;
+							glyphsFill.RemoveAt(0);
+						}
+						else
+						{
+							// fill with a blank (some xAdvance just for presence in the bitmap font view)
+							fill = new Glyph(null, 0, 0, 0, 0, 8) { Code = i, Status = Glyph.States.Inserted };
+						}
+						glyphs.Add(fill);
 					}
-					gaps.Add((inx, len));
-					// bring the code value up to speed
-					code += len;
-				}
-				code++;
-			}
-			if (glyphs.Count > inxErr)
-			{
-				// mark all the glyphs beyond the large gap
-				foreach (var g in glyphs.Skip(inxErr))
-					g.Status = Glyph.States.Error;
-			}
-			// insert blanks highest first to keep the indices valid
-			gaps.Reverse();
-			foreach ((ushort inx, ushort len) in gaps)
-			{
-				int cnt = len;
-				while (cnt-- > 0)
-				{
-					// insert blank glyphs with just enough xAdvance to show up on the font view
-					var glyph = new Glyph(null, 0, 0, 0, 0, 4) { Status = Glyph.States.Inserted };
-					glyphs.Insert(inx, glyph);
+					// add the good one
+					glyphs.Add(first);
+					code = (ushort)(first.Code + 1);
 				}
 			}
+			// fill in the rest
+			foreach (var glyph in glyphsFill)
+			{
+				glyph.Code = code++;
+				glyph.Status = Glyph.States.Error;
+				glyphs.Add(glyph);
+			}
+			return glyphs;
+		}
+
+		/// <summary>
+		/// Check the glyph list for flatness,
+		/// e.g. no duplicates, no gaps and no unspecified codes (== 0xFFFF).
+		/// </summary>
+		/// <param name="glyphsIn">The glyph list to check</param>
+		/// <returns>True if the list is flat</returns>
+		public static bool CheckFlatness(IEnumerable<Glyph> glyphsIn)
+		{
+			if (!glyphsIn.Any())
+				return true;
+			var groups = glyphsIn.GroupBy(g => g.Code);
+			ushort code = groups.First().Key;
+			foreach (var group in groups)
+			{
+				if (group.Key == 0xFFFF)
+					return false;
+				if (group.Count() > 1)
+					return false;
+				if (group.Key - code > 1)
+					return false;
+				code = group.Key;
+			}
+			return true;
 		}
 
 		/// <summary>
@@ -351,7 +357,6 @@ namespace GFXFontEditor
 		{
 			var font = new GfxFont() { yAdvance = int.Parse(node.Element("yAdvance").Value) };
 			var glyphs = Glyph.GlyphsFromXml(node.Element("glyphs"));
-			font.FirstCode = glyphs.First().Code;
 			font.AddGlyphs(glyphs);
 			return font;
 		}
@@ -428,6 +433,11 @@ namespace GFXFontEditor
 		/// <returns>True if the save was successful</returns>
 		public bool SaveFile(string fileName)
 		{
+			if (_Glyphs.Count == 0)
+			{
+				MessageBox.Show("Font is empty!", "Error saving file");
+				return false;
+			}
 			try
 			{
 				var ext = Path.GetExtension(fileName);

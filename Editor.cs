@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Drawing;
 using System.Runtime.InteropServices;
 
 namespace GFXFontEditor
@@ -20,12 +21,7 @@ namespace GFXFontEditor
 			UpDownPixelsPerDot.Maximum = 10;
 			UpDownPixelsPerDot.Value = PixelsPerDot;
 			UpDownPixelsPerDot.ValueChanged += UpDownPPD_ValueChanged;
-			// setup the FirstCode updown control
-			UpDownFirstCode.Minimum = 0;
-			UpDownFirstCode.Maximum = 0xFFFF;
-			UpDownFirstCode.Value = 32;
-			UpDownFirstCode.Hexadecimal = true;
-			UpDownFirstCode.ValueChanged += UpDownFirstCode_ValueChanged;
+
 			// timer for auto sequencing thru drag-dropped files
 			OpenTimer.Tick += OpenTimer_Tick;
 			// recently used files UI
@@ -122,12 +118,16 @@ namespace GFXFontEditor
 		/// <summary>
 		/// Note a change in the font.
 		/// </summary>
-		public void OnChange()
+		/// <param name="bmpChange">True if a glyph bitmap change is involved</param>
+		public void OnChange(bool bmpChange = true)
 		{
 			UpdateGlyphItem(CurrentGlyph);
-			pictureBoxGlyph.Invalidate();
-			toolStripLabelNumGlyphs.Text = $"# Glyphs: {CurrentFont.Glyphs.Count}";
-			ShowFontView();
+			toolStripLabelNumGlyphs.Text = $"   # Glyphs: {CurrentFont.Glyphs.Count}";
+			if (bmpChange)
+			{
+				pictureBoxGlyph.Invalidate();
+				ShowFontView();
+			}
 			DocChanged = true;
 		}
 
@@ -160,14 +160,15 @@ namespace GFXFontEditor
 		/// <returns>The item index</returns>
 		public int IndexOfGlyph(Glyph glyph)
 		{
-			return listViewGlyphs.Items.IndexOf(ItemOfGlyph(glyph));
+			return ItemOfGlyph(glyph).Index;
 		}
 
 		/// <summary>
-		/// Add an item index to those selected in the listViewGlyphs.
+		/// Select an item index in the listViewGlyphs.
 		/// </summary>
 		/// <param name="inx">The index to add</param>
-		void SelectItem(int inx)
+		/// <param name="clear">True to make it the only selected item</param>
+		void SelectIndex(int inx, bool clear = true)
 		{
 			if (listViewGlyphs.Items.Count == 0)
 				return;
@@ -176,9 +177,22 @@ namespace GFXFontEditor
 				listViewGlyphs.SelectedItems.Clear();
 				return;
 			}
+			if (clear)
+				listViewGlyphs.SelectedItems.Clear();
 			listViewGlyphs.SelectedIndices.Add(inx);
 			listViewGlyphs.EnsureVisible(inx);
 			listViewGlyphs.FocusedItem = listViewGlyphs.Items[inx];
+			listViewGlyphs.Focus();
+		}
+
+		/// <summary>
+		/// Select a glyph in the listViewGlyphs.
+		/// </summary>
+		/// <param name="glyph">The glyph to add</param>
+		/// <param name="clear">True to make it the only selected item</param>
+		void SelectGlyph(Glyph glyph, bool clear = true)
+		{
+			SelectIndex(IndexOfGlyph(glyph), clear);
 		}
 
 		/// <summary>
@@ -204,22 +218,60 @@ namespace GFXFontEditor
 		}
 
 		/// <summary>
-		/// Get the FirstCode from the menu updown control.
+		/// Set the glyph Code with changes from the UI.
 		/// </summary>
-		NumericUpDown UpDownFirstCode => toolStripNumberControlFirstCode.Control as NumericUpDown;
+		private void numericUpDownGlyphCode_ValueChanged(object sender, EventArgs e)
+		{
+			if (CurrentGlyph is not null)
+			{
+				if (CurrentGlyph.Code == (ushort)numericUpDownGlyphCode.Value)
+					return;
+				var code = (ushort)numericUpDownGlyphCode.Value;
+				var glyph = CurrentGlyph;
+				// sorting order may have changed
+				var item = ItemOfGlyph(glyph);
+				var inx = item.Index;
+				if (code < glyph.Code && (glyph == CurrentFont.Glyphs.First() || CurrentFont.Glyphs.ElementAt(inx - 1).Code <= code) ||
+					code > glyph.Code && (glyph == CurrentFont.Glyphs.Last() || CurrentFont.Glyphs.ElementAt(inx + 1).Code >= code))
+				{
+					// changing without bumping past the next glyph
+					CurrentGlyph.Code = code;
+					UpdateGlyphItem(glyph);
+					OnChange(false);
+				}
+				else
+				{
+					// remove and add back into proper place
+					CurrentGlyph.Code = code;
+					listViewGlyphs.Items.RemoveAt(inx);
+					CurrentFont.Remove(glyph);
+					inx = CurrentFont.Add(glyph);
+					listViewGlyphs.Items.Insert(inx, item);
+					SelectGlyph(glyph);
+					OnChange(true);
+				}
+			}
+		}
 
 		/// <summary>
-		/// Set the font FirstCode with changes from the UI.
+		/// Handle ENTER key pressed in numericUpDownGlyphCode
 		/// </summary>
-		private void UpDownFirstCode_ValueChanged(object sender, EventArgs e)
+		private void buttonDummy_Click(object sender, EventArgs e)
 		{
-			if (CurrentFont is not null)
-			{
-				if (CurrentFont.FirstCode == (ushort)UpDownFirstCode.Value)
-					return;
-				CurrentFont.FirstCode = (ushort)UpDownFirstCode.Value;
-				UpdateAllGlyphItems();
-			}
+			//
+			// That fuckin' DING!
+			// It happens when you press ENTER in any text control on a form without an 'AcceptButton'.
+			// We'd like ENTER to have it's intended effect of reporting a vlaue change
+			// but without the DING.
+			// So we have to put a dummy button on the form as the 'AcceptButton' to silence the DING.
+			// It has to be Visible and Enabled.
+			// And we need to set TabStop to false and hide it below another control
+			// so the user cannot get to it accidentally.
+			// Fortunately the button doesn't steal focus and we can use that to test which 
+			// control on the form the ENTER belongs to.
+			//
+			if (numericUpDownGlyphCode.Focused)
+				numericUpDownGlyphCode_ValueChanged(null, EventArgs.Empty);
 		}
 
 		/// <summary>
@@ -474,7 +526,7 @@ namespace GFXFontEditor
 						// set the font yAdvance
 						yLast = e.Y;
 						CurrentFont.yAdvance += rows;
-						toolStripLabelHeight.Text = $"Line Height: {CurrentFont.yAdvance}";
+						toolStripLabelHeight.Text = $"   Line Height: {CurrentFont.yAdvance}";
 						// with SHIFT, offset ALL the glyphs the same amount
 						// to maintain their relationships with the baseline
 						if (ModifierKeys == Keys.Shift)
@@ -712,8 +764,7 @@ namespace GFXFontEditor
 					if (glyph is not null)
 					{
 						// select it
-						listViewGlyphs.SelectedItems.Clear();
-						SelectItem(ItemOfGlyph(glyph).Index);
+						SelectGlyph(glyph);
 					}
 				}
 			}
@@ -724,6 +775,7 @@ namespace GFXFontEditor
 		/// </summary>
 		private void listViewGlyphs_SelectedIndexChanged(object sender, EventArgs e)
 		{
+			numericUpDownGlyphCode.Value = CurrentGlyph?.Code ?? 0;
 			pictureBoxGlyph.Invalidate();
 			SelectFontViewGlyph();
 		}
@@ -788,17 +840,62 @@ namespace GFXFontEditor
 			}
 		}
 
-			/// <summary>
-			/// Update the text display of the ListViewItem for a glyph.
-			/// </summary>
-			/// <param name="glyph">The glyph</param>
-			void UpdateGlyphItem(Glyph glyph)
+		/// <summary>
+		/// Change the glyph code UI interaction between hex and decimal.
+		/// </summary>
+		private void checkBoxHexCode_CheckedChanged(object sender, EventArgs e)
+		{
+			numericUpDownGlyphCode.Hexadecimal = checkBoxHexCode.Checked;
+			UpdateAllGlyphItems();
+			listViewGlyphs.Focus();
+		}
+
+		/// <summary>
+		/// Get a string array of values for the glyph's ListViewItem.
+		/// </summary>
+		/// <param name="glyph">The glyph</param>
+		/// <returns>String array for the subitems</returns>
+		private string[] GlyphSubitemValues(Glyph glyph)
+		{
+			var c = (glyph.Code < 0x20 || glyph.Code >= 0x80 && glyph.Code <= 0xA0 || glyph.Code >= 0xFFFE) ? (char)0xFFFD : (char)glyph.Code;
+			// column 0 is a hidden dummy because it cannot be set to align center!
+			return new string[]
+			{
+			"",
+			c.ToString(),
+			checkBoxHexCode.Checked ? $"0x{glyph.Code:X2}" : glyph.Code.ToString(),
+			glyph.Width.ToString(),
+			glyph.Height.ToString(),
+			glyph.xAdvance.ToString(),
+			glyph.xOffset.ToString(),
+			glyph.yOffset.ToString()
+			};
+		}
+
+		/// <summary>
+		/// Create a new ListViewItem for a glyph.
+		/// </summary>
+		/// <param name="glyph">The glyph</param>
+		/// <returns>A new ListViewItem for the glyph</returns>
+		private ListViewItem NewGlyphItem(Glyph glyph)
+		{
+			// column 0 is a hidden dummy because it cannot be set to align center!
+			return new ListViewItem(GlyphSubitemValues(glyph))
+			{
+				Tag = glyph
+			};
+		}
+
+		/// <summary>
+		/// Update the text display of the ListViewItem for a glyph.
+		/// </summary>
+		/// <param name="glyph">The glyph</param>
+		void UpdateGlyphItem(Glyph glyph)
 		{
 			if (glyph is null)
 				return;
 			// the Segoe UI font used in the listViewGlyphs doesn't display some characters,
 			// so use a known char for those; '?' in a black diamond
-			var c = (glyph.Code < 0x20 || glyph.Code >= 0x80 && glyph.Code <= 0xA0) ? (char)0xFFFD : (char)glyph.Code;
 			var item = ItemOfGlyph(glyph);
 			switch (glyph.Status)
 			{
@@ -813,13 +910,12 @@ namespace GFXFontEditor
 				default:
 					break;
 			}
-			item.SubItems[0].Text = $"{c}";
-			item.SubItems[1].Text = $"0x{glyph.Code:X2} : {glyph.Code}";
-			item.SubItems[2].Text = $"{glyph.Width}";
-			item.SubItems[3].Text = $"{glyph.Height}";
-			item.SubItems[4].Text = $"{glyph.xAdvance}";
-			item.SubItems[5].Text = $"{glyph.xOffset}";
-			item.SubItems[6].Text = $"{glyph.yOffset}";
+			var vals = GlyphSubitemValues(glyph);
+			for (int i = 0; i < item.SubItems.Count; i++)
+			{
+				if (item.SubItems[i].Text != vals[i])
+					item.SubItems[i].Text = vals[i];
+			}
 		}
 
 		/// <summary>
@@ -831,7 +927,6 @@ namespace GFXFontEditor
 			foreach (var glyph in CurrentFont.Glyphs)
 				UpdateGlyphItem(glyph);
 			listViewGlyphs.EndUpdate();
-			OnChange();
 		}
 
 		/// <summary>
@@ -857,22 +952,7 @@ namespace GFXFontEditor
 		void SetFont(GfxFont font)
 		{
 			CurrentFont = font;
-			if (font.FirstCode > UpDownFirstCode.Maximum)
-				font.FirstCode = (ushort)UpDownFirstCode.Maximum;
-			UpDownFirstCode.Value = font.FirstCode;
-			listViewGlyphs.BeginUpdate();
-			listViewGlyphs.Items.Clear();
-			foreach (var glyph in font.Glyphs)
-			{
-				// add item with placeholder subitems
-				listViewGlyphs.Items.Add(
-					new ListViewItem(new string[] { "", "", "", "", "", "", "" })
-					{
-						Tag = glyph
-					});
-			}
-			UpdateAllGlyphItems();
-			listViewGlyphs.EndUpdate();
+			RebuildAllGlyphItems();
 			toolStripLabelHeight.Text = $"Line Height: {CurrentFont.yAdvance}";
 			RecalcDesignSpace();
 			if (font.Glyphs.Any())
@@ -902,14 +982,29 @@ namespace GFXFontEditor
 					}
 				}
 				if (glyph is null)
-					SelectItem(0);
+					SelectIndex(0);
 				else
-					SelectItem(IndexOfGlyph(glyph));
+					SelectGlyph(glyph);
 			}
 			toolStripLabelNumGlyphs.Text = $"# Glyphs: {CurrentFont.Glyphs.Count}";
 			ShowFontView(true);
 			SetTitle();
 			DocChanged = false;
+		}
+
+		/// <summary>
+		/// Rebuild all the font glyph ListViewItems.
+		/// </summary>
+		private void RebuildAllGlyphItems()
+		{
+			listViewGlyphs.BeginUpdate();
+			listViewGlyphs.Items.Clear();
+			foreach (var glyph in CurrentFont.Glyphs)
+			{
+				// add item with placeholder subitems
+				listViewGlyphs.Items.Add(NewGlyphItem(glyph));
+			}
+			listViewGlyphs.EndUpdate();
 		}
 
 		/// <summary>
@@ -972,10 +1067,10 @@ namespace GFXFontEditor
 		{
 			if (!CheckChanges())
 				return;
-			var font = new GfxFont() { FirstCode = 0x20, yAdvance = 8 };
-			var glyph = new Glyph(null, 0, 0, 0, 0, 8);
+			var font = new GfxFont() { yAdvance = 8 };
+			var glyph = new Glyph(null, 0, 0, 0, 0, 8) { Code = 0x20 };
 			glyph.SetRect(glyph.xAdvance, font.yAdvance);
-			font.InsertAt(0, glyph);
+			font.Add(glyph);
 			SetFont(font);
 		}
 
@@ -1058,7 +1153,7 @@ namespace GFXFontEditor
 		{
 			SaveFileDialog sfd = new()
 			{
-				FileName = Path.GetFileName(CurrentFont.FullPathName),
+				FileName = Path.GetFileNameWithoutExtension(CurrentFont.FullPathName),
 				InitialDirectory = Path.GetDirectoryName(CurrentFont.FullPathName),
 				DefaultExt = ".h",
 				Filter = BuildFilter(GfxFont.GetSaveFileExtensions(), null),
@@ -1226,17 +1321,12 @@ namespace GFXFontEditor
 		{
 			if (CurrentFont is null)
 				return;
-			var glyph = new Glyph(Array.Empty<byte>(), 0, 0, 0, 0, CurrentFont.MaxAdvance);
-			int inx = listViewGlyphs.SelectedItems.Count == 0 ? 0 : listViewGlyphs.SelectedItems.OfType<ListViewItem>().Min(i => i.Index);
-			listViewGlyphs.Items.Insert(inx,
-					new ListViewItem(new string[] { "", "", "", "", "", "", "", })
-					{
-						Tag = glyph
-					});
-			listViewGlyphs.SelectedIndices.Clear();
-			SelectItem(inx);
-			CurrentFont.InsertAt(inx, glyph);
-			UpdateAllGlyphItems();
+			var code = CurrentGlyph is not null ? CurrentGlyph.Code - 1 : 0;
+			code = Math.Max(0, code);
+			var glyph = new Glyph(Array.Empty<byte>(), 0, 0, 0, 0, CurrentFont.MaxAdvance) { Code = (ushort)code };
+			int inx = CurrentFont.Add(glyph);
+			listViewGlyphs.Items.Insert(inx, NewGlyphItem(glyph));
+			SelectGlyph(glyph);
 		}
 
 		/// <summary>
@@ -1262,9 +1352,9 @@ namespace GFXFontEditor
 			{
 				if (inx >= listViewGlyphs.Items.Count)
 					inx = listViewGlyphs.Items.Count - 1;
-				SelectItem(inx);
+				SelectIndex(inx);
 			}
-			UpdateAllGlyphItems();
+			OnChange();
 		}
 
 		/// <summary>
@@ -1316,8 +1406,9 @@ namespace GFXFontEditor
 					if (glyph == glyphs.Last())
 						inx = 0;
 					g.CopyFrom(glyph);
+					UpdateGlyphItem(glyph);
 				}
-				UpdateAllGlyphItems();
+				OnChange();
 			}
 		}
 
@@ -1335,24 +1426,15 @@ namespace GFXFontEditor
 				var glyphs = Glyph.GlyphsFromXmlString(s);
 				if (!glyphs.Any())
 					return;
-				// remember the minimum index of the current selection set
-				int inx1 = listViewGlyphs.SelectedItems.Count == 0 ?
-								listViewGlyphs.Items.Count :
-								listViewGlyphs.SelectedItems.OfType<ListViewItem>().Min(i => i.Index);
-				// insert all backwards at same index so they come out in the right order
-				// and allow the font to set codes below the first glyph
-				foreach (var glyph in glyphs.Reverse<Glyph>())
+				foreach (var glyph in glyphs)
 				{
-					CurrentFont.InsertAt(inx1, glyph);
-					listViewGlyphs.Items.Insert(inx1,
-						new ListViewItem(new string[] { "", "", "", "", "", "", "", })
-						{
-							Tag = glyph
-						});
+					if (CurrentFont.Glyphs.Any(g => g.Code == glyph.Code))
+						glyph.Status = Glyph.States.Error;
+					var inx = CurrentFont.Add(glyph);
+					listViewGlyphs.Items.Insert(inx, NewGlyphItem(glyph));
 				}
-				listViewGlyphs.SelectedIndices.Clear();
-				SelectItem(inx1);
-				UpdateAllGlyphItems();
+				SelectGlyph(glyphs.First());
+				OnChange();
 			}
 		}
 
@@ -1366,8 +1448,9 @@ namespace GFXFontEditor
 			{
 				var glyph = GlyphOfItem(item);
 				glyph.Clear();
+				UpdateGlyphItem(glyph);
 			}
-			UpdateAllGlyphItems();
+			OnChange();
 		}
 
 		/// <summary>
@@ -1380,8 +1463,9 @@ namespace GFXFontEditor
 			{
 				var glyph = GlyphOfItem(item);
 				glyph.SetRect(glyph.xAdvance, CurrentFont.yAdvance);
+				UpdateGlyphItem(glyph);
 			}
-			UpdateAllGlyphItems();
+			OnChange();
 		}
 
 		/// <summary>
@@ -1424,6 +1508,9 @@ namespace GFXFontEditor
 			SaveFileAs();
 		}
 
+		/// <summary>
+		/// Display an about box for the app.
+		/// </summary>
 		private void aboutToolStripMenuItem_Click(object sender, EventArgs e)
 		{
 			AboutBox box = new()
@@ -1454,6 +1541,24 @@ namespace GFXFontEditor
 
 			};
 			box.ShowDialog(this);
+		}
+
+		/// <summary>
+		/// Handle the FLATTEN command for the listViewGlyphs.
+		/// </summary>
+		private void flattenGlyphListToolStripMenuItem_Click(object sender, EventArgs e)
+		{
+			if (CurrentFont is null)
+				return;
+			if (GfxFont.CheckFlatness(CurrentFont.Glyphs))
+				return;
+			var curGlyph = CurrentGlyph;
+			var glyphs = GfxFont.FlattenGlyphList(CurrentFont.Glyphs);
+			CurrentFont.Truncate(0);
+			CurrentFont.AddGlyphs(glyphs);
+			RebuildAllGlyphItems();
+			SelectGlyph(curGlyph);
+			OnChange();
 		}
 	}
 }

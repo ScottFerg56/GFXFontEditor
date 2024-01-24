@@ -35,7 +35,6 @@ namespace GFXFontEditor
 
 			GfxFont font = new()
 			{
-				FirstCode = first,
 				yAdvance = yAdvance,
 			};
 
@@ -64,7 +63,7 @@ namespace GFXFontEditor
 			{
 				var (offset, Width, Height, xAdvance, xOffset, yOffset) = gliphs[i];
 				int end = i == gliphs.Count - 1 ? bitmap.Length : gliphs[i + 1].offset;
-				var glyph = new Glyph(bitmap[offset..end], Width, Height, xOffset, yOffset, xAdvance);
+				var glyph = new Glyph(bitmap[offset..end], Width, Height, xOffset, yOffset, xAdvance) { Code = first++ };
 				font.Add(glyph);
 			}
 			return font;
@@ -83,15 +82,20 @@ namespace GFXFontEditor
 		/// </remarks>
 		public static bool Save(GfxFont font, string fileName)
 		{
+			if (!GfxFont.CheckFlatness(font.Glyphs))
+			{
+				MessageBox.Show($"Font must be flattened before saving in header format!", "Header File Save");
+				return false;
+			}
 			List<byte> bitmap = new(font.Glyphs.SelectMany(g => g.GetData()));
 			BinaryWriter writer = new(File.Open(fileName, FileMode.Create));
 
-			// typedef struct {
+																	// typedef struct {
 			writer.Write((Int32)GFXFontSize);                       //   uint8_t* bitmap;
 			writer.Write((Int32)GFXFontSize + bitmap.Count);        //   GFXglyph* glyph;
-			writer.Write((ushort)font.FirstCode);                        //   uint16_t first;
-			writer.Write((ushort)(font.FirstCode + font.Glyphs.Count - 1));  //   uint16_t last;
-			writer.Write((byte)font.yAdvance);                           //   uint8_t yAdvance;
+			writer.Write((ushort)font.StartCode);                   //   uint16_t first;
+			writer.Write((ushort)(font.EndCode));					//   uint16_t last;
+			writer.Write((byte)font.yAdvance);                      //   uint8_t yAdvance;
 																	// } GFXfont;
 
 			writer.Write(bitmap.ToArray());                         // const uint8_t <>Bitmaps[] PROGMEM = { };

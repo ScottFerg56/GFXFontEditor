@@ -143,6 +143,7 @@ namespace GFXFontEditor
 		/// <returns>A Glyph</returns>
 		public static Glyph FromXml(XElement node)
 		{
+			Enum.TryParse(typeof(States), node.Element("Status").Value, out object status);
 			var glyph = new Glyph(
 				Convert.FromBase64String(node.Element("Data").Value),
 				int.Parse(node.Element("Width").Value),
@@ -153,6 +154,7 @@ namespace GFXFontEditor
 				)
 			{
 				Code = ushort.Parse(node.Element("Code").Value),
+				Status = (status as States?) ?? States.Normal
 			};
 			return glyph;
 		}
@@ -180,6 +182,7 @@ namespace GFXFontEditor
 			node.Add(new XElement("xAdvance", $"{xAdvance}"));
 			node.Add(new XElement("xOffset", $"{xOffset}"));
 			node.Add(new XElement("yOffset", $"{yOffset}"));
+			node.Add(new XElement("Status", $"{Status}"));
 			node.Add(new XElement("Data", Convert.ToBase64String(GetData().ToArray())));
 			return node;
 		}

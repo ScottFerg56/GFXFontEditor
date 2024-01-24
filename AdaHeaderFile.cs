@@ -319,10 +319,10 @@ namespace GFXFontEditor
 			// build our font structure from the harvested glyph and font data
 			GfxFont font = new()
 			{
-				FirstCode = (ushort)fontVals[0],
 				yAdvance = fontVals[2],
 			};
 
+			var firstCode = (ushort)fontVals[0];
 			for (int i = 0; i < glyphs.Count; i++)
 			{
 				var gl = glyphs[i];
@@ -340,7 +340,7 @@ namespace GFXFontEditor
 					data = bmpValues.Select(v => (byte)v).Skip(offset1).ToArray();
 				}
 
-				var glyph = new Glyph(data, gl[1], gl[2], gl[4], gl[5], gl[3]);
+				var glyph = new Glyph(data, gl[1], gl[2], gl[4], gl[5], gl[3]) { Code = firstCode++ };
 				font.Add(glyph);
 			}
 
@@ -355,13 +355,30 @@ namespace GFXFontEditor
 		/// <returns>True if the save was successful</returns>
 		public static bool Save(GfxFont font, string fileName)
 		{
-			string fontName = Path.GetFileNameWithoutExtension(fileName);
+			string CodeToChar(ushort code) => (code < 0x20 || code >= 0x7F) ? "" : $"'{(char)code}' ";
+
+			if (!GfxFont.CheckFlatness(font.Glyphs))
+			{
+				MessageBox.Show($"Font must be flattened before saving in header format!", "Header File Save");
+				return false;
+			}
+			var fn = new StringBuilder(Path.GetFileNameWithoutExtension(fileName));
+			for (int i = 0; i < fn.Length; i++)
+			{
+				var c = fn[i];
+				if (char.IsLetter(c) || c == '_')
+					continue;
+				if (char.IsDigit(c) && i > 0)
+					continue;
+				fn[i] = '_';
+			}
+			var fontName = fn.ToString();
 			StringBuilder sb = new();
 			// write bitmap data array bytes
 			sb.AppendLine($"const uint8_t {fontName}Bitmaps[] PROGMEM = " + "{");
 			foreach (var gg in font.Glyphs)
 			{
-				sb.Append($"/* '{(char)gg.Code}' 0x{gg.Code:X2} */ ");
+				sb.Append($"/* {CodeToChar(gg.Code)}0x{gg.Code:X2} */ ");
 				foreach (var bb in gg.GetData())
 				{
 					sb.Append($"0x{bb:X2}, ");
@@ -376,7 +393,7 @@ namespace GFXFontEditor
 			int offset = 0;
 			foreach (var item in font.Glyphs)
 			{
-				sb.AppendLine($"/* '{(char)item.Code}' 0x{item.Code:X2} */ {{{offset,6}, {item.Width,4},{item.Height,4},{item.xAdvance,4},{item.xOffset,4},{item.yOffset,5} }},");
+				sb.AppendLine($"/* {CodeToChar(item.Code)}0x{item.Code:X2} */ {{{offset,6}, {item.Width,4},{item.Height,4},{item.xAdvance,4},{item.xOffset,4},{item.yOffset,5} }},");
 				offset += item.GetData().Count;
 			}
 			sb.AppendLine("};");
@@ -386,7 +403,7 @@ namespace GFXFontEditor
 			sb.AppendLine($"const GFXfont {fontName} PROGMEM = " + "{");
 			sb.AppendLine($"(uint8_t*){fontName}Bitmaps,");
 			sb.AppendLine($"(GFXglyph*){fontName}_Glyphs,");
-			sb.AppendLine($"0x{font.FirstCode:X2}, 0x{font.FirstCode + font.Glyphs.Count - 1:X2}, {font.yAdvance} ");
+			sb.AppendLine($"0x{font.StartCode:X2}, 0x{font.EndCode:X2}, {font.yAdvance} ");
 			sb.AppendLine("};");
 
 			File.WriteAllText(fileName, sb.ToString());
