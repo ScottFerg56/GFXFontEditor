@@ -12,6 +12,11 @@
 
 		public SparseMap() { }
 
+		public SparseMap(SparseMap map)
+		{
+			Points = new(map.Points);
+		}
+
 		/// <summary>
 		/// SparseMap constructor.
 		/// </summary>
@@ -161,6 +166,89 @@
 			{
 				p.Offset(x, y);
 				pts.Add(p);
+			}
+			Points = pts;
+			ClearCache();
+		}
+
+		/// <summary>
+		/// Flip all points horizontally, keeping the offset the same.
+		/// </summary>
+		public void FlipHorz()
+		{
+			List<Point> pts = new();
+			var rc = Bounds;
+			foreach (var p in Points)
+			{
+				var x = rc.Width - (p.X - rc.Left) - 1 + rc.Left;
+				pts.Add(new(x, p.Y));
+			}
+			Points = pts;
+			ClearCache();
+		}
+
+		/// <summary>
+		/// Flip all points vertically, keeping the offset the same.
+		/// </summary>
+		public void FlipVert()
+		{
+			List<Point> pts = new();
+			var rc = Bounds;
+			foreach (var p in Points)
+			{
+				var y = rc.Height - (p.Y - rc.Top) - 1 + rc.Top;
+				pts.Add(new(p.X, y));
+			}
+			Points = pts;
+			ClearCache();
+		}
+
+		/// <summary>
+		/// Rotate 180 degrees, keeping the offset the same.
+		/// </summary>
+		public void Rotate180()
+		{
+			List<Point> pts = new();
+			var rc = Bounds;
+			foreach (var p in Points)
+			{
+				var x = rc.Width - (p.X - rc.Left) - 1 + rc.Left;
+				var y = rc.Height - (p.Y - rc.Top) - 1 + rc.Top;
+				pts.Add(new(x, y));
+			}
+			Points = pts;
+			ClearCache();
+		}
+
+		/// <summary>
+		/// Rotate 90 degrees CW, keeping the offset the same.
+		/// </summary>
+		public void Rotate90CW()
+		{
+			List<Point> pts = new();
+			var rc = Bounds;
+			foreach (var p in Points)
+			{
+				var y = rc.Bottom - (rc.Right - p.X);
+				var x = (rc.Bottom - 1) - p.Y + rc.Left;
+				pts.Add(new(x, y));
+			}
+			Points = pts;
+			ClearCache();
+		}
+
+		/// <summary>
+		/// Rotate 90 degrees CCW, keeping the offset the same.
+		/// </summary>
+		public void Rotate90CCW()
+		{
+			List<Point> pts = new();
+			var rc = Bounds;
+			foreach (var p in Points)
+			{
+				var y = rc.Top + (rc.Right - p.X) + 1;
+				var x = p.Y - rc.Top + rc.Left;
+				pts.Add(new(x, y));
 			}
 			Points = pts;
 			ClearCache();

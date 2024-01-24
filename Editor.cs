@@ -941,8 +941,14 @@ namespace GFXFontEditor
 			copyToolStripMenuItem.Enabled = enable;
 			pasteToolStripMenuItem.Enabled = enable && Clipboard.ContainsData(fmtGlyphName);
 			pasteInsertToolStripMenuItem.Enabled = CurrentFont is not null && Clipboard.ContainsData(fmtGlyphName);
+			flipHorizontalToolStripMenuItem.Enabled = enable;
+			flipVerticalToolStripMenuItem.Enabled = enable;
+			rotate90CWToolStripMenuItem.Enabled = enable;
+			rotate90CCWToolStripMenuItem.Enabled = enable;
+			rotate180ToolStripMenuItem.Enabled = enable;
 			clearToolStripMenuItem.Enabled = enable;
 			setRectToolStripMenuItem.Enabled = enable;
+			flattenGlyphListToolStripMenuItem.Enabled = CurrentFont is not null && CurrentFont.Glyphs.Any();
 		}
 
 		/// <summary>
@@ -1321,7 +1327,11 @@ namespace GFXFontEditor
 		{
 			if (CurrentFont is null)
 				return;
-			var code = CurrentGlyph is not null ? CurrentGlyph.Code - 1 : 0;
+			int code;
+			if (CurrentGlyph is not null)
+				code = CurrentGlyph.Code - 1;
+			else
+				code = (CurrentFont.Glyphs.LastOrDefault(g => g.Code != 0xFFFF)?.Code ?? -1) + 1;
 			code = Math.Max(0, code);
 			var glyph = new Glyph(Array.Empty<byte>(), 0, 0, 0, 0, CurrentFont.MaxAdvance) { Code = (ushort)code };
 			int inx = CurrentFont.Add(glyph);
@@ -1438,35 +1448,29 @@ namespace GFXFontEditor
 			}
 		}
 
-		/// <summary>
-		/// Handle the CLEAR command for the listViewGlyphs.
-		/// </summary>
-		private void clearToolStripMenuItem_Click(object sender, EventArgs e)
+		private void DoSelected(Action<Glyph> act)
 		{
-			// clear all selected glyphs
+			// act on all selected glyphs
 			foreach (var item in listViewGlyphs.SelectedItems.OfType<ListViewItem>())
 			{
 				var glyph = GlyphOfItem(item);
-				glyph.Clear();
+				act(glyph);
 				UpdateGlyphItem(glyph);
 			}
 			OnChange();
 		}
 
 		/// <summary>
+		/// Handle the CLEAR command for the listViewGlyphs.
+		/// </summary>
+		private void clearToolStripMenuItem_Click(object sender, EventArgs e)
+			=> DoSelected(g => g.Clear());
+
+		/// <summary>
 		/// Handle the SET RECT command for the listViewGlyphs.
 		/// </summary>
 		private void setRectToolStripMenuItem_Click(object sender, EventArgs e)
-		{
-			// set the glyph for all selected glyphs to a hollow rectangle
-			foreach (var item in listViewGlyphs.SelectedItems.OfType<ListViewItem>())
-			{
-				var glyph = GlyphOfItem(item);
-				glyph.SetRect(glyph.xAdvance, CurrentFont.yAdvance);
-				UpdateGlyphItem(glyph);
-			}
-			OnChange();
-		}
+			=> DoSelected(g => g.SetRect(g.xAdvance, CurrentFont.yAdvance));
 
 		/// <summary>
 		/// Handle the FILE/NEW command for the listViewGlyphs.
@@ -1560,5 +1564,35 @@ namespace GFXFontEditor
 			SelectGlyph(curGlyph);
 			OnChange();
 		}
+
+		/// <summary>
+		/// Flip the selected glyphs horizontally.
+		/// </summary>
+		private void flipHorizontalToolStripMenuItem_Click(object sender, EventArgs e)
+			=> DoSelected(g => g.FlipHorz());
+
+		/// <summary>
+		/// Flip the selected glyphs vertically.
+		/// </summary>
+		private void flipVerticalToolStripMenuItem_Click(object sender, EventArgs e)
+			=> DoSelected(g => g.FlipVert());
+
+		/// <summary>
+		/// Rotate the selected glyphs 180 degrees.
+		/// </summary>
+		private void rotate180ToolStripMenuItem_Click(object sender, EventArgs e)
+			=> DoSelected(g => g.Rotate180());
+
+		/// <summary>
+		/// Rotate the selected glyphs 90 degrees CW.
+		/// </summary>
+		private void rotate90CWToolStripMenuItem_Click(object sender, EventArgs e)
+			=> DoSelected(g => g.Rotate90CW());
+
+		/// <summary>
+		/// Rotate the selected glyphs 90 degrees CCW.
+		/// </summary>
+		private void rotate90CCWToolStripMenuItem_Click(object sender, EventArgs e)
+			=> DoSelected(g => g.Rotate90CCW());
 	}
 }

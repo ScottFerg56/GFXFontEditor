@@ -195,11 +195,12 @@ namespace GFXFontEditor
 					// Y offset for glyph:
 					//		move reference from glyph top to origin (bottom)
 					//		then add BBX.Y offset (negative is up!)
-					var glyph = new Glyph(map, bbx.X, -bbx.Y - bbx.Height, dx)
+					var glyph = new Glyph(map, dx)
 					{
 						Code = code,
 						Status = (code == 0xFFFF || dup) ? Glyph.States.Error : Glyph.States.Normal
 					};
+					glyph.Offset(bbx.X, -bbx.Y - bbx.Height);
 					glyphs.Add(glyph);
 				}
 

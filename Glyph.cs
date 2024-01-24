@@ -76,18 +76,14 @@ namespace GFXFontEditor
 
 		public Glyph(
 			SparseMap map,
-			int xoffset,
-			int yoffset,
 			int xadvance
-			) : base(map.GetData(), map.Bounds.Width, map.Bounds.Height)   // bitmap data handled by the SparseMap class
+			) : base(map)   // bitmap data handled by the SparseMap class
 		{
 			// it would be nice to check the data array we produce against the data coming in
 			// unfortunately, many font files contain glyphs with extraneous blank rows at the beginning or end
 			// and also glyphs (such as space) with width=0 and height=1, which makes no sense
 			// fortunately that means this code produces more efficient font data!!
 
-			// offset the data and SparseMap tracks the actual points to be set
-			Offset(xoffset, yoffset);
 			xAdvance = xadvance;
 		}
 

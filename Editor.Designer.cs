@@ -69,6 +69,11 @@
 			pasteToolStripMenuItem = new ToolStripMenuItem();
 			pasteInsertToolStripMenuItem = new ToolStripMenuItem();
 			clearToolStripMenuItem = new ToolStripMenuItem();
+			flipHorizontalToolStripMenuItem = new ToolStripMenuItem();
+			flipVerticalToolStripMenuItem = new ToolStripMenuItem();
+			rotate90CWToolStripMenuItem = new ToolStripMenuItem();
+			rotate90CCWToolStripMenuItem = new ToolStripMenuItem();
+			rotate180ToolStripMenuItem = new ToolStripMenuItem();
 			setRectToolStripMenuItem = new ToolStripMenuItem();
 			flattenGlyphListToolStripMenuItem = new ToolStripMenuItem();
 			buttonDummy = new Button();
@@ -356,9 +361,9 @@
 			// contextMenuStripGlyphList
 			// 
 			contextMenuStripGlyphList.ImageScalingSize = new Size(24, 24);
-			contextMenuStripGlyphList.Items.AddRange(new ToolStripItem[] { insertToolStripMenuItem, deleteToolStripMenuItem, cutToolStripMenuItem, copyToolStripMenuItem, pasteToolStripMenuItem, pasteInsertToolStripMenuItem, clearToolStripMenuItem, setRectToolStripMenuItem, flattenGlyphListToolStripMenuItem });
+			contextMenuStripGlyphList.Items.AddRange(new ToolStripItem[] { insertToolStripMenuItem, deleteToolStripMenuItem, cutToolStripMenuItem, copyToolStripMenuItem, pasteToolStripMenuItem, pasteInsertToolStripMenuItem, flipHorizontalToolStripMenuItem, flipVerticalToolStripMenuItem, rotate90CWToolStripMenuItem, rotate90CCWToolStripMenuItem, rotate180ToolStripMenuItem, clearToolStripMenuItem, setRectToolStripMenuItem, flattenGlyphListToolStripMenuItem });
 			contextMenuStripGlyphList.Name = "contextMenuStrip1";
-			contextMenuStripGlyphList.Size = new Size(255, 325);
+			contextMenuStripGlyphList.Size = new Size(255, 452);
 			contextMenuStripGlyphList.Opening += contextMenuStripGlyphList_Opening;
 			// 
 			// insertToolStripMenuItem
@@ -373,7 +378,7 @@
 			// 
 			deleteToolStripMenuItem.Name = "deleteToolStripMenuItem";
 			deleteToolStripMenuItem.ShortcutKeyDisplayString = "Del";
-			deleteToolStripMenuItem.Size = new Size(240, 32);
+			deleteToolStripMenuItem.Size = new Size(254, 32);
 			deleteToolStripMenuItem.Text = "Delete";
 			deleteToolStripMenuItem.Click += deleteToolStripMenuItem_Click;
 			// 
@@ -381,7 +386,7 @@
 			// 
 			cutToolStripMenuItem.Name = "cutToolStripMenuItem";
 			cutToolStripMenuItem.ShortcutKeyDisplayString = "Ctrl+X";
-			cutToolStripMenuItem.Size = new Size(240, 32);
+			cutToolStripMenuItem.Size = new Size(254, 32);
 			cutToolStripMenuItem.Text = "Cut";
 			cutToolStripMenuItem.Click += cutToolStripMenuItem_Click;
 			// 
@@ -389,14 +394,14 @@
 			// 
 			copyToolStripMenuItem.Name = "copyToolStripMenuItem";
 			copyToolStripMenuItem.ShortcutKeyDisplayString = "Ctrl+C";
-			copyToolStripMenuItem.Size = new Size(240, 32);
+			copyToolStripMenuItem.Size = new Size(254, 32);
 			copyToolStripMenuItem.Text = "Copy";
 			copyToolStripMenuItem.Click += copyToolStripMenuItem_Click;
 			// 
 			// pasteToolStripMenuItem
 			// 
 			pasteToolStripMenuItem.Name = "pasteToolStripMenuItem";
-			pasteToolStripMenuItem.Size = new Size(240, 32);
+			pasteToolStripMenuItem.Size = new Size(254, 32);
 			pasteToolStripMenuItem.Text = "Paste to Existing";
 			pasteToolStripMenuItem.Click += pasteToolStripMenuItem_Click;
 			// 
@@ -404,28 +409,63 @@
 			// 
 			pasteInsertToolStripMenuItem.Name = "pasteInsertToolStripMenuItem";
 			pasteInsertToolStripMenuItem.ShortcutKeyDisplayString = "Ctrl+V";
-			pasteInsertToolStripMenuItem.Size = new Size(240, 32);
+			pasteInsertToolStripMenuItem.Size = new Size(254, 32);
 			pasteInsertToolStripMenuItem.Text = "Paste Insert";
 			pasteInsertToolStripMenuItem.Click += pasteInsertToolStripMenuItem_Click;
 			// 
 			// clearToolStripMenuItem
 			// 
 			clearToolStripMenuItem.Name = "clearToolStripMenuItem";
-			clearToolStripMenuItem.Size = new Size(240, 32);
+			clearToolStripMenuItem.Size = new Size(254, 32);
 			clearToolStripMenuItem.Text = "Clear Glyph";
 			clearToolStripMenuItem.Click += clearToolStripMenuItem_Click;
+			// 
+			// flipHorizontalToolStripMenuItem
+			// 
+			flipHorizontalToolStripMenuItem.Name = "flipHorizontalToolStripMenuItem";
+			flipHorizontalToolStripMenuItem.Size = new Size(254, 32);
+			flipHorizontalToolStripMenuItem.Text = "Flip Horizontal";
+			flipHorizontalToolStripMenuItem.Click += flipHorizontalToolStripMenuItem_Click;
+			// 
+			// flipVerticalToolStripMenuItem
+			// 
+			flipVerticalToolStripMenuItem.Name = "flipVerticalToolStripMenuItem";
+			flipVerticalToolStripMenuItem.Size = new Size(254, 32);
+			flipVerticalToolStripMenuItem.Text = "Flip Vertical";
+			flipVerticalToolStripMenuItem.Click += flipVerticalToolStripMenuItem_Click;
+			// 
+			// rotate90CWToolStripMenuItem
+			// 
+			rotate90CWToolStripMenuItem.Name = "rotate90CWToolStripMenuItem";
+			rotate90CWToolStripMenuItem.Size = new Size(254, 32);
+			rotate90CWToolStripMenuItem.Text = "Rotate 90° CW";
+			rotate90CWToolStripMenuItem.Click += rotate90CWToolStripMenuItem_Click;
+			// 
+			// rotate90CCWToolStripMenuItem
+			// 
+			rotate90CCWToolStripMenuItem.Name = "rotate90CCWToolStripMenuItem";
+			rotate90CCWToolStripMenuItem.Size = new Size(254, 32);
+			rotate90CCWToolStripMenuItem.Text = "Rotate 90° CCW";
+			rotate90CCWToolStripMenuItem.Click += rotate90CCWToolStripMenuItem_Click;
+			// 
+			// rotate180ToolStripMenuItem
+			// 
+			rotate180ToolStripMenuItem.Name = "rotate180ToolStripMenuItem";
+			rotate180ToolStripMenuItem.Size = new Size(254, 32);
+			rotate180ToolStripMenuItem.Text = "Rotate 180°";
+			rotate180ToolStripMenuItem.Click += rotate180ToolStripMenuItem_Click;
 			// 
 			// setRectToolStripMenuItem
 			// 
 			setRectToolStripMenuItem.Name = "setRectToolStripMenuItem";
-			setRectToolStripMenuItem.Size = new Size(240, 32);
+			setRectToolStripMenuItem.Size = new Size(254, 32);
 			setRectToolStripMenuItem.Text = "Set Glyph as Rect";
 			setRectToolStripMenuItem.Click += setRectToolStripMenuItem_Click;
 			// 
 			// flattenGlyphListToolStripMenuItem
 			// 
 			flattenGlyphListToolStripMenuItem.Name = "flattenGlyphListToolStripMenuItem";
-			flattenGlyphListToolStripMenuItem.Size = new Size(240, 32);
+			flattenGlyphListToolStripMenuItem.Size = new Size(254, 32);
 			flattenGlyphListToolStripMenuItem.Text = "Flatten Glyph List";
 			flattenGlyphListToolStripMenuItem.Click += flattenGlyphListToolStripMenuItem_Click;
 			// 
@@ -555,5 +595,10 @@
 		private ToolStripMenuItem flattenGlyphListToolStripMenuItem;
 		private CheckBox checkBoxHexCode;
 		private ColumnHeader columnHeader0;
+		private ToolStripMenuItem flipHorizontalToolStripMenuItem;
+		private ToolStripMenuItem flipVerticalToolStripMenuItem;
+		private ToolStripMenuItem rotate180ToolStripMenuItem;
+		private ToolStripMenuItem rotate90CWToolStripMenuItem;
+		private ToolStripMenuItem rotate90CCWToolStripMenuItem;
 	}
 }

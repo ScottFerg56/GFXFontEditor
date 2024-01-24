@@ -355,7 +355,7 @@ namespace GFXFontEditor
 		/// <returns>True if the save was successful</returns>
 		public static bool Save(GfxFont font, string fileName)
 		{
-			string CodeToChar(ushort code) => (code < 0x20 || code >= 0x7F) ? "" : $"'{(char)code}' ";
+			static string CodeToChar(ushort code) => (code < 0x20 || code >= 0x7F) ? "" : $"'{(char)code}' ";
 
 			if (!GfxFont.CheckFlatness(font.Glyphs))
 			{
