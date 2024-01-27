@@ -42,29 +42,32 @@ namespace GFXFontEditor
 		public ReadOnlyCollection<Glyph> Glyphs => _Glyphs.AsReadOnly();
 
 		/// <summary>
+		/// Calculate the union of a set of Rectangles.
+		/// </summary>
+		/// <param name="rects">The Rectangles</param>
+		/// <returns>The union</returns>
+		public static Rectangle UnionOfRects(IEnumerable<Rectangle> rects)
+		{
+			// Rectangle.Empty contains the point (0,0) which would show up in the union
+			// so we need to seed from the first non-empty glyph bounds
+			// before doing any union operation with other glyphs
+			var union = Rectangle.Empty;
+			foreach (var rc in rects)
+			{
+				if (rc.IsEmpty)
+					continue;
+				if (union.IsEmpty)
+					union = rc;
+				else
+					union = Rectangle.Union(union, rc);
+			}
+			return union;
+		}
+
+		/// <summary>
 		/// Gets the rectangular bounds that tightly contains the Bounds of all the Glyphs.
 		/// </summary>
-		public Rectangle BmpBounds
-		{
-			get
-			{
-				// Rectangle.Empty contains the point (0,0) which would show up in the union
-				// so we need to seed from the first non-empty glyph bounds
-				// before doing any union operation with other glyphs
-				var bounds = Rectangle.Empty;
-				foreach (var g in _Glyphs)
-				{
-					var rc = g.Bounds;
-					if (rc.IsEmpty)
-						continue;
-                    if (bounds.IsEmpty)
-						bounds = rc;
-					else
-						bounds = Rectangle.Union(bounds, g.Bounds);
-				}
-				return bounds;
-			}
-		}
+		public Rectangle BmpBounds => UnionOfRects(_Glyphs.Select(g => g.Bounds));
 
 		/// <summary>
 		/// The maximum xAdvance of all the Glyphs.
@@ -141,14 +144,14 @@ namespace GFXFontEditor
 		/// <param name="textColor">The color for glyph printing</param>
 		/// <param name="bounds">Returns the left and right extent along the text line for each printed Glyph</param>
 		/// <returns>The bitmap of the printed Glyphs</returns>
-		public Bitmap ToBitmap(string text, int pixelsPerDot, Color backColor, Color textColor, out List<(int left, int right)> bounds)
+		public Bitmap ToBitmap(string text, int pixelsPerDot, int width, Color backColor, Color textColor, out List<Rectangle> bounds)
 		{
 			IEnumerable<Glyph> glyphs;
 			if (string.IsNullOrWhiteSpace(text))
 				glyphs = _Glyphs;
 			else
 				glyphs = text.Select(c => _Glyphs.FirstOrDefault(gl => gl.Code == c)).ToList();
-			return ToBitmap(glyphs, pixelsPerDot, backColor, textColor, out bounds);
+			return ToBitmap(glyphs, width, pixelsPerDot, backColor, textColor, out bounds);
 		}
 
 		/// <summary>
@@ -160,45 +163,68 @@ namespace GFXFontEditor
 		/// <param name="textColor">The color for glyph printing</param>
 		/// <param name="bounds">Returns the left and right extent along the text line for each printed Glyph</param>
 		/// <returns>The bitmap of the printed Glyphs</returns>
-		public Bitmap ToBitmap(IEnumerable<Glyph> glyphs, int pixelsPerDot, Color backColor, Color textColor, out List<(int left, int right)> bounds)
+		public Bitmap ToBitmap(IEnumerable<Glyph> glyphs, int width, int pixelsPerDot, Color backColor, Color textColor, out List<Rectangle> bounds)
 		{
 			bounds = new();
 			if (!_Glyphs.Any())
 				return null;
-			var rcBounds = FullBounds;
-			var top = Math.Min(-yAdvance, rcBounds.Top);
-			var bottom = Math.Max(0, rcBounds.Bottom);
-			int width = glyphs.Sum(g => g is null ? 1 : g.xAdvance) * pixelsPerDot;
-			int height = rcBounds.Height * pixelsPerDot;
+			// split the glyphs into rows that span the desired width
+			List<List<Glyph>> rows = new();
+			int x = 0;
+			rows.Add(new());
+			foreach (var glyph in glyphs)
+			{
+				var xAdv = glyph is null ? pixelsPerDot : glyph.xAdvance;
+				if (x + xAdv * pixelsPerDot > width && rows.Last().Count > 0)
+				{
+					rows.Add(new());
+					x = 0;
+				}
+				x += xAdv * pixelsPerDot;
+				rows.Last().Add(glyph);
+			}
+			// calc the bitmap height from the number of rows
+			var rcFirst = UnionOfRects(rows.First().Select(g => g.Bounds));
+			var rcLast = UnionOfRects(rows.Last().Select(g => g.Bounds));
+			int y = Math.Max(-rcFirst.Top, yAdvance) * pixelsPerDot;
+			int height = y + (rcLast.Bottom + yAdvance * rows.Count - 1) * pixelsPerDot;
 			if (width * height == 0)
 				return null;
 			var bmp = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
 			using (var g = Graphics.FromImage(bmp))
 			{
 				g.Clear(backColor);
-				int x = 0;
-				int y = Math.Max(-rcBounds.Top, yAdvance) * pixelsPerDot;
 				using var pen = new Pen(Color.Blue, 1);
 				using var penRed = new Pen(Color.Red, pixelsPerDot);
-				// draw baseline and top line in blue
-				g.DrawLine(pen, 0, y - pixelsPerDot / 2, width, y - pixelsPerDot / 2);
-				g.DrawLine(pen, 0, y - yAdvance * pixelsPerDot + pixelsPerDot / 2, width, y - yAdvance * pixelsPerDot + pixelsPerDot / 2);
-				foreach (var glyph in glyphs)
+				foreach (var row in rows)
 				{
-					var left = x;
-					if (glyph is null)
+					x = 0;
+					foreach (var glyph in row)
 					{
-						// a red mark represents any null Glyphs (text characters not found in the text to be displayed)
-						g.DrawLine(penRed, x + pixelsPerDot / 2, 0, x + pixelsPerDot / 2, height);
-						x += pixelsPerDot;
+						var left = x;
+						if (glyph is null)
+						{
+							// a red mark represents any null Glyphs (text characters not found in the text to be displayed)
+							g.DrawLine(penRed, x + pixelsPerDot / 2, 0, x + pixelsPerDot / 2, height);
+							x += pixelsPerDot;
+							bounds.Add(Rectangle.Empty);
+						}
+						else
+						{
+							// print the Glyph
+							glyph.Print(g, pixelsPerDot, textColor, ref x, y);
+							// add the bounds for this Glyph
+							var bnds = glyph.Bounds;
+							// include the full glyph space
+							bnds = Rectangle.Union(bnds, new(0, -yAdvance, glyph.xAdvance, yAdvance));
+							// adjust for scale
+							bnds = new(bnds.Left * pixelsPerDot + left, bnds.Top * pixelsPerDot + y, bnds.Width * pixelsPerDot, bnds.Height * pixelsPerDot);
+							bounds.Add(bnds);
+						}
 					}
-					else
-					{
-						// print the Glyph
-						glyph.Print(g, pixelsPerDot, textColor, ref x, y);
-					}
-					// add the left & right bounds for this Glyph
-					bounds.Add((left, x - 1));
+					// draw baseline in blue
+					g.DrawLine(pen, 0, y - pixelsPerDot / 2, width, y - pixelsPerDot / 2);
+					y += yAdvance * pixelsPerDot;
 				}
 			}
 			return bmp;

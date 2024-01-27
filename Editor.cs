@@ -207,6 +207,7 @@ namespace GFXFontEditor
 		{
 			PixelsPerDot = (int)UpDownPixelsPerDot.Value;
 			ShowFontView();
+			listViewGlyphs.Focus();
 		}
 
 		/// <summary>
@@ -272,6 +273,8 @@ namespace GFXFontEditor
 			//
 			if (numericUpDownGlyphCode.Focused)
 				numericUpDownGlyphCode_ValueChanged(null, EventArgs.Empty);
+			else if (UpDownPixelsPerDot.Focused)
+				UpDownPPD_ValueChanged(null, EventArgs.Empty);
 		}
 
 		/// <summary>
@@ -621,21 +624,21 @@ namespace GFXFontEditor
 		/// <summary>
 		/// The left and right extent along the text line for each printed Glyph in the pictureBoxFontView.
 		/// </summary>
-		List<(int left, int right)> boundsFontView = new();
+		List<Rectangle> boundsFontView = new();
 
 		/// <summary>
 		/// Prepare the bitmap display image of sample text for the pictureBoxFontView.
 		/// </summary>
 		void ShowFontView(bool center = false)
 		{
-			pictureBoxFontView.Image = CurrentFont?.ToBitmap(toolStripTextBoxFVText.Text, PixelsPerDot, Color.Black, Color.White, out boundsFontView);
+			pictureBoxFontView.Image = CurrentFont?.ToBitmap(toolStripTextBoxFVText.Text, PixelsPerDot, splitContainer2.Panel2.ClientRectangle.Width, Color.Black, Color.White, out boundsFontView);
 			SelectFontViewGlyph(center);
 		}
 
 		/// <summary>
 		/// Get the left and right extent of the current glyph in the pictureBoxFontView.
 		/// </summary>
-		(int left, int right) BoundsOfSelectedGlyph()
+		Rectangle BoundsOfSelectedGlyph()
 		{
 			if (CurrentGlyph is not null)
 			{
@@ -648,7 +651,7 @@ namespace GFXFontEditor
 				if (inx >= 0 && inx < boundsFontView.Count)
 					return boundsFontView[inx];
 			}
-			return (-1, -1);
+			return Rectangle.Empty;
 		}
 
 		/// <summary>
@@ -657,23 +660,23 @@ namespace GFXFontEditor
 		/// </summary>
 		void SelectFontViewGlyph(bool center = false)
 		{
-			var (left, right) = BoundsOfSelectedGlyph();
-			if (left != -1)
+			var rc = BoundsOfSelectedGlyph();
+			if (!rc.IsEmpty)
 			{
 				//
-				// The horizontal scroll value appears to take on the range
-				// of 0 to the delta between the Image and Panel widths.
-				// Though the horizontal scroll maximum does not reflect this.
+				// The scroll value appears to take on the range
+				// of 0 to the delta between the Image and Panel dimensions.
+				// Though the scroll maximum does not reflect this.
 				// So we adjust the value to nudge the glyph into view.
 				//
-				//var min = splitContainer2.Panel2.HorizontalScroll.Minimum;
-				var max = splitContainer2.Panel2.HorizontalScroll.Maximum;
+				//var min = splitContainer2.Panel2.VerticalScroll.Minimum;
+				var max = splitContainer2.Panel2.VerticalScroll.Maximum;
 
-				var v = splitContainer2.Panel2.HorizontalScroll.Value;
-				var pw = splitContainer2.Panel2.Width;
-				var iw = pictureBoxFontView.Image.Width;
+				var v = splitContainer2.Panel2.VerticalScroll.Value;
+				var ph = splitContainer2.Panel2.Height;
+				var ih = pictureBoxFontView.Image.Height;
 
-				var delta = iw - pw;
+				var delta = ih - ph;
 
 				if (max == 100 && delta > 100)
 				{
@@ -686,20 +689,21 @@ namespace GFXFontEditor
 				// nothing to do if the Image fits entirely within the Panel
 				if (delta > 0)
 				{
+					const int margin = 20;
 					// calculate a new value, with a bit of a margin added
 					// but only if the glyph is not fully in view
 					int newv = v;
 					if (center)
 					{
 						// try to center glyph in the scroll
-						newv = Math.Max(0, ((left + right) - pw) / 2);
+						newv = Math.Max(0, ((rc.Bottom + rc.Top) - ph) / 2);
 					}
 					else
 					{   // try to keep scroll stable
-						if (left < v + 10)
-							newv = left - 10;
-						else if (right > v + pw - 10)
-							newv = right - pw + 10;
+						if (rc.Top < v + margin)
+							newv = rc.Top - margin;
+						else if (rc.Bottom > v + ph - margin)
+							newv = rc.Bottom - ph + margin;
 						if (newv < 0)
 							newv = 0;
 						else if (newv > delta)
@@ -710,7 +714,7 @@ namespace GFXFontEditor
 						//Debug.WriteLine($"v:{v} max:{max} delta:{delta} left:{left} newv:{newv}");
 						try
 						{
-							splitContainer2.Panel2.HorizontalScroll.Value = newv;
+							splitContainer2.Panel2.VerticalScroll.Value = newv;
 							splitContainer2.Panel2.PerformLayout(); // required to make scrollbar do it's job?!
 						}
 						catch (Exception)
@@ -730,9 +734,12 @@ namespace GFXFontEditor
 			if (pictureBoxFontView.Image is null)
 				return;
 			// here we're painting over the Image already drawn by the base PictureBox code
-			var (left, right) = BoundsOfSelectedGlyph();
-			if (left != -1)
-				e.Graphics.DrawRectangle(Pens.Red, left - 1, 0, right - left + 1, pictureBoxFontView.Image.Height - 1);
+			var rc = BoundsOfSelectedGlyph();
+			if (!rc.IsEmpty)
+			{
+				using var pen = new Pen(Color.Red, (float)Math.Ceiling(PixelsPerDot / 2.0));
+				e.Graphics.DrawRectangle(pen, rc);
+			}
 		}
 
 		/// <summary>
@@ -743,8 +750,8 @@ namespace GFXFontEditor
 			// locate the left,right bounds containing the mouse
 			for (int i = 0; i < boundsFontView.Count; i++)
 			{
-				var (left, right) = boundsFontView[i];
-				if (e.X > left && e.X < right)
+				var rc = boundsFontView[i];
+				if (rc.Contains(e.X, e.Y))
 				{
 					// find the glyph based on the index
 					Glyph glyph;
@@ -768,6 +775,14 @@ namespace GFXFontEditor
 					}
 				}
 			}
+		}
+
+		/// <summary>
+		/// Resize the font view image with it's containing panel.
+		/// </summary>
+		private void splitContainer2_Panel2_Resize(object sender, EventArgs e)
+		{
+			ShowFontView();
 		}
 
 		/// <summary>

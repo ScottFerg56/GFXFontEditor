@@ -68,12 +68,12 @@
 			copyToolStripMenuItem = new ToolStripMenuItem();
 			pasteToolStripMenuItem = new ToolStripMenuItem();
 			pasteInsertToolStripMenuItem = new ToolStripMenuItem();
-			clearToolStripMenuItem = new ToolStripMenuItem();
 			flipHorizontalToolStripMenuItem = new ToolStripMenuItem();
 			flipVerticalToolStripMenuItem = new ToolStripMenuItem();
 			rotate90CWToolStripMenuItem = new ToolStripMenuItem();
 			rotate90CCWToolStripMenuItem = new ToolStripMenuItem();
 			rotate180ToolStripMenuItem = new ToolStripMenuItem();
+			clearToolStripMenuItem = new ToolStripMenuItem();
 			setRectToolStripMenuItem = new ToolStripMenuItem();
 			flattenGlyphListToolStripMenuItem = new ToolStripMenuItem();
 			buttonDummy = new Button();
@@ -413,13 +413,6 @@
 			pasteInsertToolStripMenuItem.Text = "Paste Insert";
 			pasteInsertToolStripMenuItem.Click += pasteInsertToolStripMenuItem_Click;
 			// 
-			// clearToolStripMenuItem
-			// 
-			clearToolStripMenuItem.Name = "clearToolStripMenuItem";
-			clearToolStripMenuItem.Size = new Size(254, 32);
-			clearToolStripMenuItem.Text = "Clear Glyph";
-			clearToolStripMenuItem.Click += clearToolStripMenuItem_Click;
-			// 
 			// flipHorizontalToolStripMenuItem
 			// 
 			flipHorizontalToolStripMenuItem.Name = "flipHorizontalToolStripMenuItem";
@@ -454,6 +447,13 @@
 			rotate180ToolStripMenuItem.Size = new Size(254, 32);
 			rotate180ToolStripMenuItem.Text = "Rotate 180°";
 			rotate180ToolStripMenuItem.Click += rotate180ToolStripMenuItem_Click;
+			// 
+			// clearToolStripMenuItem
+			// 
+			clearToolStripMenuItem.Name = "clearToolStripMenuItem";
+			clearToolStripMenuItem.Size = new Size(254, 32);
+			clearToolStripMenuItem.Text = "Clear Glyph";
+			clearToolStripMenuItem.Click += clearToolStripMenuItem_Click;
 			// 
 			// setRectToolStripMenuItem
 			// 
@@ -496,13 +496,14 @@
 			splitContainer2.Panel2.AutoScroll = true;
 			splitContainer2.Panel2.BackColor = Color.FromArgb(50, 50, 50);
 			splitContainer2.Panel2.Controls.Add(pictureBoxFontView);
+			splitContainer2.Panel2.Resize += splitContainer2_Panel2_Resize;
 			splitContainer2.Size = new Size(1729, 1088);
 			splitContainer2.SplitterDistance = 862;
 			splitContainer2.TabIndex = 2;
 			// 
 			// pictureBoxFontView
 			// 
-			pictureBoxFontView.Location = new Point(0, 18);
+			pictureBoxFontView.Location = new Point(0, 3);
 			pictureBoxFontView.Name = "pictureBoxFontView";
 			pictureBoxFontView.Size = new Size(150, 75);
 			pictureBoxFontView.SizeMode = PictureBoxSizeMode.AutoSize;
