@@ -79,6 +79,7 @@
 			buttonDummy = new Button();
 			splitContainer2 = new SplitContainer();
 			pictureBoxFontView = new PictureBox();
+			addToSampleTextToolStripMenuItem = new ToolStripMenuItem();
 			toolStrip1.SuspendLayout();
 			((System.ComponentModel.ISupportInitialize)splitContainer1).BeginInit();
 			splitContainer1.Panel1.SuspendLayout();
@@ -361,9 +362,9 @@
 			// contextMenuStripGlyphList
 			// 
 			contextMenuStripGlyphList.ImageScalingSize = new Size(24, 24);
-			contextMenuStripGlyphList.Items.AddRange(new ToolStripItem[] { insertToolStripMenuItem, deleteToolStripMenuItem, cutToolStripMenuItem, copyToolStripMenuItem, pasteToolStripMenuItem, pasteInsertToolStripMenuItem, flipHorizontalToolStripMenuItem, flipVerticalToolStripMenuItem, rotate90CWToolStripMenuItem, rotate90CCWToolStripMenuItem, rotate180ToolStripMenuItem, clearToolStripMenuItem, setRectToolStripMenuItem, flattenGlyphListToolStripMenuItem });
+			contextMenuStripGlyphList.Items.AddRange(new ToolStripItem[] { insertToolStripMenuItem, deleteToolStripMenuItem, cutToolStripMenuItem, copyToolStripMenuItem, pasteToolStripMenuItem, pasteInsertToolStripMenuItem, flipHorizontalToolStripMenuItem, flipVerticalToolStripMenuItem, rotate90CWToolStripMenuItem, rotate90CCWToolStripMenuItem, rotate180ToolStripMenuItem, clearToolStripMenuItem, setRectToolStripMenuItem, flattenGlyphListToolStripMenuItem, addToSampleTextToolStripMenuItem });
 			contextMenuStripGlyphList.Name = "contextMenuStrip1";
-			contextMenuStripGlyphList.Size = new Size(255, 452);
+			contextMenuStripGlyphList.Size = new Size(255, 517);
 			contextMenuStripGlyphList.Opening += contextMenuStripGlyphList_Opening;
 			// 
 			// insertToolStripMenuItem
@@ -512,6 +513,13 @@
 			pictureBoxFontView.Paint += pictureBoxFontView_Paint;
 			pictureBoxFontView.MouseDown += pictureBoxFontView_MouseDown;
 			// 
+			// addToSampleTextToolStripMenuItem
+			// 
+			addToSampleTextToolStripMenuItem.Name = "addToSampleTextToolStripMenuItem";
+			addToSampleTextToolStripMenuItem.Size = new Size(254, 32);
+			addToSampleTextToolStripMenuItem.Text = "Add to Sample Text";
+			addToSampleTextToolStripMenuItem.Click += addToSampleTextToolStripMenuItem_Click;
+			// 
 			// Editor
 			// 
 			AcceptButton = buttonDummy;
@@ -601,5 +609,6 @@
 		private ToolStripMenuItem rotate180ToolStripMenuItem;
 		private ToolStripMenuItem rotate90CWToolStripMenuItem;
 		private ToolStripMenuItem rotate90CCWToolStripMenuItem;
+		private ToolStripMenuItem addToSampleTextToolStripMenuItem;
 	}
 }

@@ -184,8 +184,8 @@ namespace GFXFontEditor
 				rows.Last().Add(glyph);
 			}
 			// calc the bitmap height from the number of rows
-			var rcFirst = UnionOfRects(rows.First().Select(g => g.Bounds));
-			var rcLast = UnionOfRects(rows.Last().Select(g => g.Bounds));
+			var rcFirst = UnionOfRects(rows.First().Select(g => g is null ? Rectangle.Empty : g.Bounds));
+			var rcLast = UnionOfRects(rows.Last().Select(g => g is null ? Rectangle.Empty : g.Bounds));
 			int y = Math.Max(-rcFirst.Top, yAdvance) * pixelsPerDot;
 			int height = y + (rcLast.Bottom + yAdvance * rows.Count - 1) * pixelsPerDot;
 			if (width * height == 0)
@@ -195,7 +195,7 @@ namespace GFXFontEditor
 			{
 				g.Clear(backColor);
 				using var pen = new Pen(Color.Blue, 1);
-				using var penRed = new Pen(Color.Red, pixelsPerDot);
+				using var penX = new Pen(Color.Yellow, pixelsPerDot);
 				foreach (var row in rows)
 				{
 					x = 0;
@@ -205,7 +205,7 @@ namespace GFXFontEditor
 						if (glyph is null)
 						{
 							// a red mark represents any null Glyphs (text characters not found in the text to be displayed)
-							g.DrawLine(penRed, x + pixelsPerDot / 2, 0, x + pixelsPerDot / 2, height);
+							g.DrawLine(penX, x + pixelsPerDot / 2, y - yAdvance * pixelsPerDot, x + pixelsPerDot / 2, y);
 							x += pixelsPerDot;
 							bounds.Add(Rectangle.Empty);
 						}

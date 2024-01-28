@@ -275,6 +275,8 @@ namespace GFXFontEditor
 				numericUpDownGlyphCode_ValueChanged(null, EventArgs.Empty);
 			else if (UpDownPixelsPerDot.Focused)
 				UpDownPPD_ValueChanged(null, EventArgs.Empty);
+			else if (toolStripTextBoxFVText.Focused)
+				listViewGlyphs.Focus();
 		}
 
 		/// <summary>
@@ -627,11 +629,30 @@ namespace GFXFontEditor
 		List<Rectangle> boundsFontView = new();
 
 		/// <summary>
+		/// Get the sample text, decoded from unicode hex escape sequences.
+		/// </summary>
+		string SampleText
+		{
+			get
+			{
+				try
+				{
+					return System.Text.RegularExpressions.Regex.Unescape(toolStripTextBoxFVText.Text);
+				}
+				catch (Exception)
+				{
+					// this will fail as the user types incomplete escape sequences
+					return toolStripTextBoxFVText.Text;
+				}
+			}
+		}
+
+		/// <summary>
 		/// Prepare the bitmap display image of sample text for the pictureBoxFontView.
 		/// </summary>
 		void ShowFontView(bool center = false)
 		{
-			pictureBoxFontView.Image = CurrentFont?.ToBitmap(toolStripTextBoxFVText.Text, PixelsPerDot, splitContainer2.Panel2.ClientRectangle.Width, Color.Black, Color.White, out boundsFontView);
+			pictureBoxFontView.Image = CurrentFont?.ToBitmap(SampleText, PixelsPerDot, splitContainer2.Panel2.ClientRectangle.Width, Color.Black, Color.White, out boundsFontView);
 			SelectFontViewGlyph(center);
 		}
 
@@ -643,7 +664,7 @@ namespace GFXFontEditor
 			if (CurrentGlyph is not null)
 			{
 				int inx;
-				var s = toolStripTextBoxFVText.Text;
+				var s = SampleText;
 				if (!string.IsNullOrWhiteSpace(s))
 					inx = s.IndexOf((char)CurrentGlyph.Code);
 				else
@@ -682,14 +703,14 @@ namespace GFXFontEditor
 				{
 					// if we get here before Form_Shown,
 					// the scroll max will still be at the default 100
-					Debug.Fail("Font view UI has not settled");
+					// Debug.Fail("Font view UI has not settled");
 					return;
 				}
 
 				// nothing to do if the Image fits entirely within the Panel
 				if (delta > 0)
 				{
-					const int margin = 20;
+					const int margin = 10;
 					// calculate a new value, with a bit of a margin added
 					// but only if the glyph is not fully in view
 					int newv = v;
@@ -755,7 +776,7 @@ namespace GFXFontEditor
 				{
 					// find the glyph based on the index
 					Glyph glyph;
-					var s = toolStripTextBoxFVText.Text;
+					var s = SampleText;
 					if (!string.IsNullOrWhiteSpace(s))
 					{
 						// using the sample text
@@ -980,10 +1001,10 @@ namespace GFXFontEditor
 			{
 				// initially select a glyph
 				Glyph glyph = null;
-				if (!string.IsNullOrWhiteSpace(toolStripTextBoxFVText.Text))
+				if (!string.IsNullOrWhiteSpace(SampleText))
 				{
 					// first non-empty glyph represented in the sample text
-					glyph = font.Glyphs.FirstOrDefault(g => toolStripTextBoxFVText.Text.Contains((char)g.Code) && !g.Bounds.IsEmpty);
+					glyph = font.Glyphs.FirstOrDefault(g => SampleText.Contains((char)g.Code) && !g.Bounds.IsEmpty);
 				}
 				if (glyph is null)
 				{
@@ -1609,5 +1630,29 @@ namespace GFXFontEditor
 		/// </summary>
 		private void rotate90CCWToolStripMenuItem_Click(object sender, EventArgs e)
 			=> DoSelected(g => g.Rotate90CCW());
+
+		/// <summary>
+		/// Escape unprintable characters as unicode hex escape sequences.
+		/// </summary>
+		/// <param name="c">The character to encode</param>
+		/// <returns>The encoded string representation</returns>
+		private string Escape(char c)
+		{
+			if (c < 0x20 || c >= 0x80)
+				return $"\\u{(int)c:X4}";
+			if (c == '\\')
+				return @"\\";
+			return c.ToString();
+		}
+
+		/// <summary>
+		/// Add the selected glyph to the end of the sample text
+		/// </summary>
+		/// <param name="sender"></param>
+		/// <param name="e"></param>
+		private void addToSampleTextToolStripMenuItem_Click(object sender, EventArgs e)
+		{
+			toolStripTextBoxFVText.Text += Escape((char)CurrentGlyph.Code);
+		}
 	}
 }
