@@ -304,7 +304,7 @@ namespace GFXFontEditor
 		{
 			return
 				AdaHeaderFile.GetExtensions()
-				.Concat(BdfParser.GetExtensions())
+				.Concat(BdfFile.GetExtensions())
 				.Concat(GfxBinaryFile.GetExtensions())
 				.Concat(GfxXmlFile.GetExtensions());
 		}
@@ -321,7 +321,7 @@ namespace GFXFontEditor
 		{
 			return
 				AdaHeaderFile.GetExtensions()
-				.Concat(BdfParser.GetExtensions())
+				.Concat(BdfFile.GetExtensions())
 				.Concat(GfxBinaryFile.GetExtensions())
 				.Concat(GfxXmlFile.GetExtensions());
 		}
@@ -516,7 +516,7 @@ namespace GFXFontEditor
 						font = AdaHeaderFile.Load(fileName);
 						break;
 					case ".bdf":
-						font = new BdfParser(fileName).Load();
+						font = BdfFile.Load(fileName);
 						break;
 					case ".gfxfntx":
 						font = GfxXmlFile.Load(fileName);
@@ -568,7 +568,7 @@ namespace GFXFontEditor
 						ok = AdaHeaderFile.Save(this, fileName);
 						break;
 					case ".bdf":
-						ok = BdfWriter.Save(this, fileName);
+						ok = BdfFile.Save(this, fileName);
 						break;
 					case ".gfxfntx":
 						ok = GfxXmlFile.Save(this, fileName);

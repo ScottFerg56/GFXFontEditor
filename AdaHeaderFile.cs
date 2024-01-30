@@ -4,7 +4,7 @@ using System.Text.RegularExpressions;
 
 namespace GFXFontEditor
 {
-	public class AdaHeaderFile
+	public static class AdaHeaderFile
 	{
 		public static IEnumerable<(string ext, string title)> GetExtensions()
 		{

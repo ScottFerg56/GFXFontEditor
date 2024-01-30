@@ -5,141 +5,135 @@ namespace GFXFontEditor
 	/// <summary>
 	/// Load 'Glyph Bitmap Distribution Format' (BDF) files
 	/// </summary>
-	public class BdfParser
+	/// <exception cref="Exception">Errors while parsing the file</exception>
+	public static class BdfFile
 	{
-		// https://adobe-type-tools.github.io/font-tech-notes/pdfs/5005.BDF_Spec.pdf
-		readonly StreamReader file;
-		readonly string fileName;
-		public List<Glyph> glyphs = new();
-		public List<Glyph> glyphsErr = new();
-		private int lineNumber = -1;
-		string line;
-		List<string> tokens;
-		string keyWord = "";
-
-		public BdfParser(string fileName)
-		{
-			this.fileName = fileName;
-			file = File.OpenText(fileName);
-		}
-
 		public static IEnumerable<(string ext, string title)> GetExtensions()
 		{
 			yield return (".bdf", "BDF");
 		}
 
-		void Error(string message)
-		{
-			throw new Exception($"[{Path.GetFileName(fileName)}][line:{lineNumber}] {message}");
-		}
-
-		/// <summary>
-		/// Read a line from the file
-		/// </summary>
-		void ReadLine()
-		{
-			line = file.ReadLine();
-			lineNumber++;
-			if (line is null)
-				Error("unexpected end of file");
-		}
-
-		/// <summary>
-		/// Read an input line, parse into space-separated tokens and set the first as a keyWord.
-		/// </summary>
-		void ParseLine()
-		{
-			ReadLine();
-			tokens = line.Split(new char[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries).ToList();
-			keyWord = tokens.FirstOrDefault() ?? "";
-		}
-
-		/// <summary>
-		/// Create a list of integer value parameters from the parsed tokens following the 1st keyWord.
-		/// </summary>
-		/// <param name="cnt">Number of values</param>
-		/// <param name="optionalCount">Number of optional values</param>
-		/// <returns>List of integer parameter values</returns>
-		List<int> Values(int cnt, int optionalCount = 0)
-		{
-			List<int> values = new();
-			for (int i = 1; i <= cnt; i++)
-			{
-				if (i >= tokens.Count)
-				{
-					if (i - (tokens.Count - 1) <= optionalCount)
-						values.Add(int.MinValue);
-					else
-						Error("not enough parameters supplied");
-				}
-				else if (int.TryParse(tokens[i], out int v))
-				{
-					values.Add(v);
-				}
-				else
-				{
-					Error($"cannot parse integer parameter {tokens[i]}");
-				}
-			}
-			return values;
-		}
-
-		/// <summary>
-		/// Return a single value.
-		/// </summary>
-		/// <returns>int value</returns>
-		int Values1() => Values(1)[0];
-
-		/// <summary>
-		/// Return a two-tuple of parameter values
-		/// </summary>
-		/// <param name="optionalCount">Number of optional values</param>
-		/// <returns>Tuple of values</returns>
-		(int, int) Values2(int optionalCount = 0)
-		{
-			var values = Values(2, optionalCount);
-			return (values[0], values[1]);
-		}
-
-		/// <summary>
-		/// Return a four-tuple of parameter values
-		/// </summary>
-		/// <returns>Tuple of values</returns>
-		(int, int, int, int) Values4()
-		{
-			var values = Values(4);
-			return (values[0], values[1], values[2], values[3]);
-		}
-
-#if true
-		/// <summary>
-		/// Output a Debug message, with filename and linenumber.
-		/// </summary>
-		/// <param name="msg">The message to output</param>
-		void Trace(string msg)
-		{
-			Debug.WriteLine($"[{fileName}][{lineNumber}] {msg}");
-		}
-
-		/// <summary>
-		/// Output a Debug message, with filename and linenumber, if a condition is false.
-		/// </summary>
-		/// <param name="cond">The test condition</param>
-		/// <param name="msg">The message to output</param>
-		void TraceAssert(bool cond, string msg)
-		{
-			if (!cond)
-				Trace(msg);
-		}
-#endif
-
 		/// <summary>
 		/// Load a BDF file.
 		/// </summary>
-		/// <returns>The font</returns>
-		/// <exception cref="Exception">Errors while parsing the file</exception>
-		public GfxFont Load()
+		/// <param name="fileName">Name of the file to load.</param>
+		/// <returns>GfxFont loaded, or null if the load fails.</returns>
+		public static GfxFont Load(string fileName)
 		{
+			// https://adobe-type-tools.github.io/font-tech-notes/pdfs/5005.BDF_Spec.pdf
+			StreamReader file = File.OpenText(fileName);
+			List<Glyph> glyphs = new();
+			List<Glyph> glyphsErr = new();
+			int lineNumber = -1;
+			string line;
+			List<string> tokens;
+			string keyWord = "";
+
+			void Error(string message)
+			{
+				throw new Exception($"[{Path.GetFileName(fileName)}][line:{lineNumber}] {message}");
+			}
+
+			/// <summary>
+			/// Read a line from the file
+			/// </summary>
+			void ReadLine()
+			{
+				line = file.ReadLine();
+				lineNumber++;
+				if (line is null)
+					Error("unexpected end of file");
+			}
+
+			/// <summary>
+			/// Read an input line, parse into space-separated tokens and set the first as a keyWord.
+			/// </summary>
+			void ParseLine()
+			{
+				ReadLine();
+				tokens = line.Split(new char[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries).ToList();
+				keyWord = tokens.FirstOrDefault() ?? "";
+			}
+
+			/// <summary>
+			/// Create a list of integer value parameters from the parsed tokens following the 1st keyWord.
+			/// </summary>
+			/// <param name="cnt">Number of values</param>
+			/// <param name="optionalCount">Number of optional values</param>
+			/// <returns>List of integer parameter values</returns>
+			List<int> Values(int cnt, int optionalCount = 0)
+			{
+				List<int> values = new();
+				for (int i = 1; i <= cnt; i++)
+				{
+					if (i >= tokens.Count)
+					{
+						if (i - (tokens.Count - 1) <= optionalCount)
+							values.Add(int.MinValue);
+						else
+							Error("not enough parameters supplied");
+					}
+					else if (int.TryParse(tokens[i], out int v))
+					{
+						values.Add(v);
+					}
+					else
+					{
+						Error($"cannot parse integer parameter {tokens[i]}");
+					}
+				}
+				return values;
+			}
+
+			/// <summary>
+			/// Return a single value.
+			/// </summary>
+			/// <returns>int value</returns>
+			int Values1() => Values(1)[0];
+
+			/// <summary>
+			/// Return a two-tuple of parameter values
+			/// </summary>
+			/// <param name="optionalCount">Number of optional values</param>
+			/// <returns>Tuple of values</returns>
+			(int, int) Values2(int optionalCount = 0)
+			{
+				var values = Values(2, optionalCount);
+				return (values[0], values[1]);
+			}
+
+			/// <summary>
+			/// Return a four-tuple of parameter values
+			/// </summary>
+			/// <returns>Tuple of values</returns>
+			(int, int, int, int) Values4()
+			{
+				var values = Values(4);
+				return (values[0], values[1], values[2], values[3]);
+			}
+
+#if true
+			/// <summary>
+			/// Output a Debug message, with filename and linenumber.
+			/// </summary>
+			/// <param name="msg">The message to output</param>
+			void Trace(string msg)
+			{
+				Debug.WriteLine($"[{fileName}][{lineNumber}] {msg}");
+			}
+
+			/// <summary>
+			/// Output a Debug message, with filename and linenumber, if a condition is false.
+			/// </summary>
+			/// <param name="cond">The test condition</param>
+			/// <param name="msg">The message to output</param>
+			void TraceAssert(bool cond, string msg)
+			{
+				if (!cond)
+					Trace(msg);
+			}
+#endif
+
 			(int x, int y) globaldwidth = (0, 0);
 			Rectangle fontBoundingBox = new();
 			FontProperties fontProperties = new();
@@ -339,10 +333,7 @@ namespace GFXFontEditor
 				}
 			}
 		}
-	}
 
-	class BdfWriter
-	{ 
 		/// <summary>
 		/// Save the font to a BDF file.
 		/// </summary>

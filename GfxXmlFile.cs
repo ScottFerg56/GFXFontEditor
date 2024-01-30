@@ -2,7 +2,7 @@
 
 namespace GFXFontEditor
 {
-	public class GfxXmlFile
+	public static class GfxXmlFile
 	{
 		public static IEnumerable<(string ext, string title)> GetExtensions()
 		{
