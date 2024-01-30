@@ -199,7 +199,7 @@ namespace GFXFontEditor
 					var glyph = new Glyph(map, dx)
 					{
 						Code = code,
-						Status = (code == 0xFFFF || dup) ? Glyph.States.Error : Glyph.States.Normal
+						Status = dup ? Glyph.States.Duplicate : code == 0xFFFF ? Glyph.States.NoCode : Glyph.States.Normal
 					};
 					glyph.Offset(bbx.X, -bbx.Y - bbx.Height);
 					glyphs.Add(glyph);

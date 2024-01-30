@@ -68,7 +68,7 @@
 		protected void ClearCache()
 		{
 			_Bounds = Rectangle.Empty;
-			_Data = Array.Empty<byte>();
+			_Data = [];
 		}
 
 		protected Rectangle _Bounds;
@@ -254,7 +254,7 @@
 			ClearCache();
 		}
 
-		protected byte[] _Data = Array.Empty<byte>();
+		protected byte[] _Data = [];
 		/// <summary>
 		/// Returns the data bitmap representing the SparseMap.
 		/// </summary>

@@ -42,7 +42,7 @@ namespace GFXFontEditor
 		/// </summary>
 		public int yOffset => Bounds.Y;
 
-		public enum States { Normal, Inserted, Error};
+		public enum States { Normal, Inserted, Duplicate, Moved, NoCode};
 
 		public States Status = States.Normal;
 
@@ -94,7 +94,7 @@ namespace GFXFontEditor
 		/// This value is maintained by the font only as a convenient cache since the actual value
 		/// depends on the font's FirstCode and the glyph's position in the list.
 		/// </remarks>
-		public ushort Code { get; internal set; }
+		public ushort Code { get; set; }
 
 		/// <summary>
 		/// Print the glyph onto a Graphics canvas.
@@ -273,6 +273,7 @@ namespace GFXFontEditor
 				Set(0, -y);
 				Set(width - 1, -y);
 			}
+			Status = Glyph.States.Normal; // once edited, consider it fixed
 		}
 	}
 }

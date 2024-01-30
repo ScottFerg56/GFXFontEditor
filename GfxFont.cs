@@ -346,7 +346,7 @@ namespace GFXFontEditor
 				// and any duplicate codes
 				foreach (var glyph in group.Skip(skip))
 				{
-					glyph.Status = Glyph.States.Error;
+					glyph.Status = Glyph.States.Moved;
 					glyphsFill.Add(glyph);
 				}
 			}
@@ -373,7 +373,7 @@ namespace GFXFontEditor
 					// we've encountered a 'too big' gap
 					// just compress codes to the end
 					first.Code = code++;
-					first.Status = Glyph.States.Error;
+					first.Status = Glyph.States.Moved;
 					glyphs.Add(first);
 				}
 				else
@@ -387,7 +387,7 @@ namespace GFXFontEditor
 							// fill from the 'bad' list
 							fill = glyphsFill.First();
 							fill.Code = i;
-							fill.Status = Glyph.States.Error;
+							fill.Status = Glyph.States.Moved;
 							glyphsFill.RemoveAt(0);
 						}
 						else
@@ -406,7 +406,7 @@ namespace GFXFontEditor
 			foreach (var glyph in glyphsFill)
 			{
 				glyph.Code = code++;
-				glyph.Status = Glyph.States.Error;
+				glyph.Status = Glyph.States.Moved;
 				glyphs.Add(glyph);
 			}
 			return glyphs;

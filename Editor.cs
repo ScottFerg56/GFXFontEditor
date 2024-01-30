@@ -242,6 +242,7 @@ namespace GFXFontEditor
 				{
 					// changing without bumping past the next glyph
 					CurrentGlyph.Code = code;
+					CurrentGlyph.Status = Glyph.States.Normal; // once edited, consider it fixed
 					UpdateGlyphItem(glyph);
 					OnChange(false);
 				}
@@ -249,6 +250,7 @@ namespace GFXFontEditor
 				{
 					// remove and add back into proper place
 					CurrentGlyph.Code = code;
+					CurrentGlyph.Status = Glyph.States.Normal; // once edited, consider it fixed
 					listViewGlyphs.Items.RemoveAt(inx);
 					CurrentFont.Remove(glyph);
 					inx = CurrentFont.Add(glyph);
@@ -589,6 +591,7 @@ namespace GFXFontEditor
 						}
 						else
 						{
+							CurrentGlyph.Status = Glyph.States.Normal;	// once edited, consider it fixed
 							CurrentGlyph.xAdvance += cols;
 						}
 						//Debug.WriteLine($"xAdvance adjust by {cols} to {CurrentGlyph.xAdvance}");
@@ -605,6 +608,7 @@ namespace GFXFontEditor
 					//Debug.WriteLine($"DRAG  col: {col}  row: {row}");
 					var glyph = CurrentGlyph;
 					glyph.Offset(col - ColLast, row - RowLast);
+					glyph.Status = Glyph.States.Normal; // once edited, consider it fixed
 					ColLast = col;
 					RowLast = row;
 					OnChange();
@@ -624,7 +628,10 @@ namespace GFXFontEditor
 			if (!rcFull.Contains(col, row))
 				return;
 			if (CurrentGlyph.Get(col, row) != DrawState)
+			{
 				CurrentGlyph.Toggle(col, row);
+				CurrentGlyph.Status = Glyph.States.Normal; // once edited, consider it fixed
+			}
 			ColLast = col;
 			RowLast = row;
 			OnChange();
@@ -933,6 +940,21 @@ namespace GFXFontEditor
 		}
 
 		/// <summary>
+		/// Get colors for glyph item.
+		/// </summary>
+		/// <param name="glyph">Glyph to color</param>
+		/// <returns>Foreground and background text colors</returns>
+		private (Color fore, Color back) GlyphItemColor(Glyph glyph)
+		{
+			return glyph.Status switch
+			{
+				Glyph.States.Normal => (listViewGlyphs.ForeColor, listViewGlyphs.BackColor),
+				Glyph.States.Inserted => (Color.DimGray, Color.Silver),
+				_ => (listViewGlyphs.ForeColor, Color.RosyBrown),	// all 'abnormal' states
+			};
+		}
+
+		/// <summary>
 		/// Create a new ListViewItem for a glyph.
 		/// </summary>
 		/// <param name="glyph">The glyph</param>
@@ -942,7 +964,9 @@ namespace GFXFontEditor
 			// column 0 is a hidden dummy because it cannot be set to align center!
 			return new ListViewItem(GlyphSubitemValues(glyph))
 			{
-				Tag = glyph
+				Tag = glyph,
+				ForeColor = GlyphItemColor(glyph).fore,
+				BackColor = GlyphItemColor(glyph).back,
 			};
 		}
 
@@ -957,19 +981,8 @@ namespace GFXFontEditor
 			// the Segoe UI font used in the listViewGlyphs doesn't display some characters,
 			// so use a known char for those; '?' in a black diamond
 			var item = ItemOfGlyph(glyph);
-			switch (glyph.Status)
-			{
-				case Glyph.States.Inserted:
-					item.BackColor = Color.Silver;
-					item.ForeColor = Color.DimGray;
-					break;
-				case Glyph.States.Error:
-					item.BackColor = Color.RosyBrown;
-					break;
-				case Glyph.States.Normal:
-				default:
-					break;
-			}
+			item.ForeColor = GlyphItemColor(glyph).fore;
+			item.BackColor = GlyphItemColor(glyph).back;
 			var vals = GlyphSubitemValues(glyph);
 			for (int i = 0; i < item.SubItems.Count; i++)
 			{
@@ -1505,7 +1518,7 @@ namespace GFXFontEditor
 				foreach (var glyph in glyphs)
 				{
 					if (CurrentFont.Glyphs.Any(g => g.Code == glyph.Code))
-						glyph.Status = Glyph.States.Error;
+						glyph.Status = Glyph.States.Duplicate;
 					var inx = CurrentFont.Add(glyph);
 					listViewGlyphs.Items.Insert(inx, NewGlyphItem(glyph));
 				}
@@ -1530,7 +1543,7 @@ namespace GFXFontEditor
 		/// Handle the CLEAR command for the listViewGlyphs.
 		/// </summary>
 		private void clearToolStripMenuItem_Click(object sender, EventArgs e)
-			=> DoSelected(g => g.Clear());
+			=> DoSelected(g => { g.Clear(); g.Status = Glyph.States.Normal; });
 
 		/// <summary>
 		/// Handle the SET RECT command for the listViewGlyphs.
@@ -1635,31 +1648,31 @@ namespace GFXFontEditor
 		/// Flip the selected glyphs horizontally.
 		/// </summary>
 		private void flipHorizontalToolStripMenuItem_Click(object sender, EventArgs e)
-			=> DoSelected(g => g.FlipHorz());
+			=> DoSelected(g => { g.FlipHorz(); g.Status = Glyph.States.Normal; });
 
 		/// <summary>
 		/// Flip the selected glyphs vertically.
 		/// </summary>
 		private void flipVerticalToolStripMenuItem_Click(object sender, EventArgs e)
-			=> DoSelected(g => g.FlipVert());
+			=> DoSelected(g => { g.FlipVert(); g.Status = Glyph.States.Normal; });
 
 		/// <summary>
 		/// Rotate the selected glyphs 180 degrees.
 		/// </summary>
 		private void rotate180ToolStripMenuItem_Click(object sender, EventArgs e)
-			=> DoSelected(g => g.Rotate180());
+			=> DoSelected(g => { g.Rotate180(); g.Status = Glyph.States.Normal; });
 
 		/// <summary>
 		/// Rotate the selected glyphs 90 degrees CW.
 		/// </summary>
 		private void rotate90CWToolStripMenuItem_Click(object sender, EventArgs e)
-			=> DoSelected(g => g.Rotate90CW());
+			=> DoSelected(g => { g.Rotate90CW(); g.Status = Glyph.States.Normal; });
 
 		/// <summary>
 		/// Rotate the selected glyphs 90 degrees CCW.
 		/// </summary>
 		private void rotate90CCWToolStripMenuItem_Click(object sender, EventArgs e)
-			=> DoSelected(g => g.Rotate90CCW());
+			=> DoSelected(g => { g.Rotate90CCW(); g.Status = Glyph.States.Normal; });
 
 		/// <summary>
 		/// Escape unprintable characters as unicode hex escape sequences.
