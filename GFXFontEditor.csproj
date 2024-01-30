@@ -2,9 +2,10 @@
 
     <PropertyGroup>
         <OutputType>WinExe</OutputType>
-        <TargetFramework>net6.0-windows</TargetFramework>
+        <TargetFramework>net7.0-windows</TargetFramework>
         <Nullable>disable</Nullable>
-        <UseWindowsForms>true</UseWindowsForms>
+		<LangVersion>latest</LangVersion>
+		<UseWindowsForms>true</UseWindowsForms>
         <ImplicitUsings>enable</ImplicitUsings>
 		<AssemblyTitle>GFX Font Editor</AssemblyTitle>
 		<Description>An editor for bitmap fonts for use with the Adafruit Arduino GFX Library</Description>

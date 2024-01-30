@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Drawing;
 using System.Runtime.InteropServices;
+using System.Windows.Forms.Design;
 
 namespace GFXFontEditor
 {
@@ -895,17 +896,17 @@ namespace GFXFontEditor
 		{
 			var c = (glyph.Code < 0x20 || glyph.Code >= 0x80 && glyph.Code <= 0xA0 || glyph.Code >= 0xFFFE) ? (char)0xFFFD : (char)glyph.Code;
 			// column 0 is a hidden dummy because it cannot be set to align center!
-			return new string[]
-			{
-			"",
-			c.ToString(),
-			checkBoxHexCode.Checked ? $"0x{glyph.Code:X2}" : glyph.Code.ToString(),
-			glyph.Width.ToString(),
-			glyph.Height.ToString(),
-			glyph.xAdvance.ToString(),
-			glyph.xOffset.ToString(),
-			glyph.yOffset.ToString()
-			};
+			return
+			[
+				"",
+				c.ToString(),
+				checkBoxHexCode.Checked ? $"0x{glyph.Code:X2}" : glyph.Code.ToString(),
+				glyph.Width.ToString(),
+				glyph.Height.ToString(),
+				glyph.xAdvance.ToString(),
+				glyph.xOffset.ToString(),
+				glyph.yOffset.ToString()
+			];
 		}
 
 		/// <summary>
@@ -1117,6 +1118,7 @@ namespace GFXFontEditor
 		}
 
 		[DllImport("user32.dll")]
+		//[LibraryImport("user32.dll")]
 		private static extern IntPtr SendMessage(
 			IntPtr hWnd,
 			UInt32 msg,
@@ -1204,7 +1206,12 @@ namespace GFXFontEditor
 			};
 			if (sfd.ShowDialog() != DialogResult.OK)
 				return false;
-			return SaveFile(sfd.FileName);
+			if (SaveFile(sfd.FileName))
+			{
+				SetTitle();
+				return true;
+			}
+			return false;
 		}
 
 		/// <summary>
@@ -1369,7 +1376,7 @@ namespace GFXFontEditor
 			else
 				code = (CurrentFont.Glyphs.LastOrDefault(g => g.Code != 0xFFFF)?.Code ?? -1) + 1;
 			code = Math.Max(0, code);
-			var glyph = new Glyph(Array.Empty<byte>(), 0, 0, 0, 0, CurrentFont.MaxAdvance) { Code = (ushort)code };
+			var glyph = new Glyph([], 0, 0, 0, 0, CurrentFont.MaxAdvance) { Code = (ushort)code };
 			int inx = CurrentFont.Add(glyph);
 			listViewGlyphs.Items.Insert(inx, NewGlyphItem(glyph));
 			SelectGlyph(glyph);
@@ -1636,7 +1643,7 @@ namespace GFXFontEditor
 		/// </summary>
 		/// <param name="c">The character to encode</param>
 		/// <returns>The encoded string representation</returns>
-		private string Escape(char c)
+		private static string Escape(char c)
 		{
 			if (c < 0x20 || c >= 0x80)
 				return $"\\u{(int)c:X4}";
@@ -1654,5 +1661,26 @@ namespace GFXFontEditor
 		{
 			toolStripTextBoxFVText.Text += Escape((char)CurrentGlyph.Code);
 		}
+
+		private void editFontPropertiesToolStripMenuItem_Click(object sender, EventArgs e)
+		{
+			if (CurrentFont is null)
+				return;
+			FontProperties.Edit(ref CurrentFont.Properties);
+		}
+
+		private void toolStripDropDownButtonFile_DropDownOpening(object sender, EventArgs e)
+		{
+			var enable = CurrentFont is not null;
+			saveToolStripMenuItem.Enabled = enable;
+			saveAsToolStripMenuItem.Enabled = enable;
+			editFontPropertiesToolStripMenuItem.Enabled = enable;
+		}
+	}
+
+	[ToolStripItemDesignerAvailability(ToolStripItemDesignerAvailability.ToolStrip)]
+	public class ToolStripNumberControl : ToolStripControlHost
+	{
+		public ToolStripNumberControl() : base(new NumericUpDown()) { }
 	}
 }

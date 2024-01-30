@@ -77,6 +77,7 @@ namespace GFXFontEditor
 			bool inComment = false;
 			string line = null;
 			int lineNumber = 0;
+			FontProperties fontProperties = new();
 
 			// throw an error exception
 			void Error(string message)
@@ -95,10 +96,52 @@ namespace GFXFontEditor
 						line = file.ReadLine().Trim();
 						lineNumber++;
 						if (line == null)
-							Error($"Unexpected end of file");
+							Error("Unexpected end of file");
 						// ignore empty lines or those with #pragma, #include, etc.
-						if (string.IsNullOrWhiteSpace(line) || line[0] == '#')
+						if (string.IsNullOrWhiteSpace(line))
 							continue;
+						if (line[0] == '#')
+						{
+							if (line.StartsWith("#pragma") || line.StartsWith("#include"))
+								continue;
+							Error("Unsupported preprocessor directive");
+						}
+						if (line.StartsWith("/* PROPERTIES"))
+						{
+							while (true)
+							{
+								line = file.ReadLine().Trim();
+								lineNumber++;
+								if (line == null)
+									Error($"Unexpected end of file");
+								if (line.StartsWith("*/"))
+									break;
+								var sa = line.Split(' ');
+								if (sa.Length == 2)
+								{
+									var propOk = int.TryParse(sa[1], out int prop);
+									switch (sa[0])
+									{
+										case "FONT_NAME":
+											fontProperties.FontName = sa[1];
+											break;
+										case "PIXEL_SIZE":
+											if (propOk)
+												fontProperties.PixelSize = prop;
+											break;
+										case "FONT_ASCENT":
+											if (propOk)
+												fontProperties.Ascent = prop;
+											break;
+										case "FONT_DESCENT":
+											if (propOk)
+												fontProperties.Descent = prop;
+											break;
+									}
+								}
+							}
+							continue;
+						}
 						// generate tokens from the line
 						var m = regx.Matches(line);
 						// filter out the whitespace
@@ -216,6 +259,8 @@ namespace GFXFontEditor
 				glyph = new();
 				Accept("{");
 				NumberList(out glyph);
+				if (glyph.Count < 6)
+					Error($"Incomplete GFXGlyph structure (expected 6 values)");
 				Accept("}");
 			}
 
@@ -288,7 +333,7 @@ namespace GFXFontEditor
 
 			AcceptAll("const", "GFXfont");
 
-			var fontName = Parse();
+			var fontNameVar = Parse();
 
 			Optional("PROGMEM");
 
@@ -314,20 +359,19 @@ namespace GFXFontEditor
 			AcceptAll("}", ";");
 
 			if (fontVals.Count < 3)
-				Error($"Incomplete GFXfont strtucture");
+				Error($"Incomplete GFXfont strtucture (expected 3 values)");
 
 			// build our font structure from the harvested glyph and font data
 			GfxFont font = new()
 			{
 				yAdvance = fontVals[2],
+				Properties = fontProperties
 			};
 
 			var firstCode = (ushort)fontVals[0];
 			for (int i = 0; i < glyphs.Count; i++)
 			{
 				var gl = glyphs[i];
-				if (gl.Count < 6)
-					Error($"Incomplete GFXGlyph structure");
 				var offset1 = gl[0];
 				byte[] data = null;
 				if (gl != glyphs.Last())
@@ -362,51 +406,53 @@ namespace GFXFontEditor
 				MessageBox.Show($"Font must be flattened before saving in header format!", "Header File Save");
 				return false;
 			}
-			var fn = new StringBuilder(Path.GetFileNameWithoutExtension(fileName));
-			for (int i = 0; i < fn.Length; i++)
-			{
-				var c = fn[i];
-				if (char.IsLetter(c) || c == '_')
-					continue;
-				if (char.IsDigit(c) && i > 0)
-					continue;
-				fn[i] = '_';
-			}
-			var fontName = fn.ToString();
-			StringBuilder sb = new();
+			var sw = new StreamWriter(fileName);
+			sw.WriteLine("#pragma once");
+			sw.WriteLine("#include <Adafruit_GFX.h>");
+			sw.WriteLine("/* PROPERTIES");
+			sw.WriteLine("");
+			if (font.Properties.FontName is not null)
+				sw.WriteLine($"FONT_NAME {font.Properties.FontName}");
+			if (font.Properties.PixelSize.HasValue)
+				sw.WriteLine($"PIXEL_SIZE {font.Properties.PixelSize}");  // fontforge asks for PIXEL_SIZE
+			if (font.Properties.Ascent.HasValue)
+				sw.WriteLine($"FONT_ASCENT {font.Properties.Ascent}");
+			if (font.Properties.Descent.HasValue)
+				sw.WriteLine($"FONT_DESCENT {font.Properties.Descent}");
+			sw.WriteLine("*/");
 			// write bitmap data array bytes
-			sb.AppendLine($"const uint8_t {fontName}Bitmaps[] PROGMEM = " + "{");
+			sw.WriteLine($"const uint8_t {font.FontNameDefault}Bitmaps[] PROGMEM = " + "{");
 			foreach (var gg in font.Glyphs)
 			{
-				sb.Append($"/* {CodeToChar(gg.Code)}0x{gg.Code:X2} */ ");
+				sw.Write($"/* {CodeToChar(gg.Code)}0x{gg.Code:X2} */ ");
 				foreach (var bb in gg.GetData())
 				{
-					sb.Append($"0x{bb:X2}, ");
+					sw.Write($"0x{bb:X2}, ");
 				}
-				sb.AppendLine();
+				sw.WriteLine();
 			}
-			sb.AppendLine("};");
-			sb.AppendLine();
+			sw.WriteLine("};");
+			sw.WriteLine();
 
 			// write GFXglyph array initialization
-			sb.AppendLine($"const GFXglyph {fontName}Glyphs[] PROGMEM = " + "{");
+			sw.WriteLine($"const GFXglyph {font.FontNameDefault}Glyphs[] PROGMEM = " + "{");
 			int offset = 0;
 			foreach (var item in font.Glyphs)
 			{
-				sb.AppendLine($"/* {CodeToChar(item.Code)}0x{item.Code:X2} */ {{{offset,6}, {item.Width,4},{item.Height,4},{item.xAdvance,4},{item.xOffset,4},{item.yOffset,5} }},");
+				sw.WriteLine($"/* {CodeToChar(item.Code)}0x{item.Code:X2} */ {{{offset,6}, {item.Width,4},{item.Height,4},{item.xAdvance,4},{item.xOffset,4},{item.yOffset,5} }},");
 				offset += item.GetData().Count;
 			}
-			sb.AppendLine("};");
-			sb.AppendLine();
+			sw.WriteLine("};");
+			sw.WriteLine();
 
 			// write GFXfont struct initialization
-			sb.AppendLine($"const GFXfont {fontName} PROGMEM = " + "{");
-			sb.AppendLine($"(uint8_t*){fontName}Bitmaps,");
-			sb.AppendLine($"(GFXglyph*){fontName}_Glyphs,");
-			sb.AppendLine($"0x{font.StartCode:X2}, 0x{font.EndCode:X2}, {font.yAdvance} ");
-			sb.AppendLine("};");
+			sw.WriteLine($"const GFXfont {font.FontNameDefault} PROGMEM = " + "{");
+			sw.WriteLine($"(uint8_t*){font.FontNameDefault}Bitmaps,");
+			sw.WriteLine($"(GFXglyph*){font.FontNameDefault}Glyphs,");
+			sw.WriteLine($"0x{font.StartCode:X2}, 0x{font.EndCode:X2}, {font.yAdvance} ");
+			sw.WriteLine("};");
 
-			File.WriteAllText(fileName, sb.ToString());
+			sw.Close();
 			return true;
 		}
 	}

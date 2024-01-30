@@ -1,5 +1,7 @@
 ﻿using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Diagnostics;
+using System.Text;
 using System.Xml.Linq;
 
 namespace GFXFontEditor
@@ -21,15 +23,75 @@ namespace GFXFontEditor
 			} GFXfont;
 		*/
 
+		private string _FullPathName;
 		/// <summary>
 		/// Full path name to the file from which the font was loaded.
 		/// </summary>
-		public string FullPathName;
+		public string FullPathName
+		{
+			get => _FullPathName;
+			set
+			{
+				_FullPathName = value;
+				Properties.FontName ??= FileNameToID(FullPathName);
+			}
+		}
 
 		/// <summary>
 		/// The number of y pixels advanced from the start of one line of charaters to the next.
 		/// </summary>
 		public int yAdvance;
+
+		// font BDF properties
+		public FontProperties Properties = new();
+
+		public string FontNameDefault
+		{
+			get
+			{
+				if (Properties.FontName is not null)
+					return Properties.FontName;
+				return FileNameToID(FullPathName);
+			}
+		}
+
+		public int PixelSizeDefault
+		{
+			get
+			{
+				if (Properties.PixelSize.HasValue)
+					return Properties.PixelSize.Value;
+				return AscentDefault + DescentDefault;
+			}
+		}
+
+		public int AscentDefault
+		{
+			get
+			{
+				if (Properties.Ascent.HasValue)
+					return Properties.Ascent.Value;
+				if (Properties.Descent.HasValue)
+					return Properties.Descent.Value * 4;
+				if (Properties.PixelSize.HasValue)
+					return (int)Math.Round(Properties.PixelSize.Value * 0.8);
+				return BmpBounds.Height;
+			}
+		}
+
+		public int DescentDefault
+		{
+			get
+			{
+				if (Properties.Descent.HasValue)
+					return Properties.Descent.Value;
+				if (Properties.Ascent.HasValue)
+					return (int)Math.Round(Properties.Ascent.Value * 0.25);
+				if (Properties.PixelSize.HasValue)
+					return (int)Math.Round(Properties.PixelSize.Value * 0.2);
+				return (int)Math.Round(BmpBounds.Height * 0.25);
+			}
+		}
 
 		public ushort StartCode => _Glyphs.FirstOrDefault()?.Code ?? 0;
 
@@ -259,6 +321,7 @@ namespace GFXFontEditor
 		{
 			return
 				AdaHeaderFile.GetExtensions()
+				.Concat(BdfParser.GetExtensions())
 				.Concat(GfxBinaryFile.GetExtensions())
 				.Concat(GfxXmlFile.GetExtensions());
 		}
@@ -374,6 +437,16 @@ namespace GFXFontEditor
 			return true;
 		}
 
+		public static string GetNodeStr(XElement node, string name) => node.Element(name)?.Value;
+
+		public static int? GetNodeInt(XElement node, string name)
+		{
+			var pnode = node.Element(name);
+			if (pnode is null || !int.TryParse(pnode.Value, out int v))
+				return null;
+			return v;
+		}
+
 		/// <summary>
 		/// Load a font from it's XML representation.
 		/// </summary>
@@ -381,7 +454,17 @@ namespace GFXFontEditor
 		/// <returns>A font</returns>
 		public static GfxFont FromXml(XElement node)
 		{
-			var font = new GfxFont() { yAdvance = int.Parse(node.Element("yAdvance").Value) };
+			var font = new GfxFont
+			{
+				yAdvance = int.Parse(node.Element("yAdvance").Value),
+				Properties = new()
+				{
+					FontName = GetNodeStr(node, "FontName"),
+					PixelSize = GetNodeInt(node, "PixelSize"),
+					Ascent = GetNodeInt(node, "Ascent"),
+					Descent = GetNodeInt(node, "Descent")
+				}
+			};
 			var glyphs = Glyph.GlyphsFromXml(node.Element("glyphs"));
 			font.AddGlyphs(glyphs);
 			return font;
@@ -395,6 +478,14 @@ namespace GFXFontEditor
 		{
 			var node = new XElement("GfxFont");
 			node.Add(new XElement("yAdvance", $"{yAdvance}"));
+			if (Properties.FontName is not null)
+				node.Add(new XElement("FontName", Properties.FontName));
+			if (Properties.PixelSize.HasValue)
+				node.Add(new XElement("PixelSize", Properties.PixelSize.ToString()));
+			if (Properties.Ascent.HasValue)
+				node.Add(new XElement("Ascent", Properties.Ascent.ToString()));
+			if (Properties.Descent.HasValue)
+				node.Add(new XElement("Descent", Properties.Descent.ToString()));
 			node.Add(Glyph.GlyphsToXml(_Glyphs));
 			return node;
 		}
@@ -464,28 +555,162 @@ namespace GFXFontEditor
 				MessageBox.Show("Font is empty!", "Error saving file");
 				return false;
 			}
+			var saveFileName = FullPathName;
+			// set for default FONT_NAME property value
+			bool ok;
+			FullPathName = fileName;
 			try
 			{
 				var ext = Path.GetExtension(fileName);
 				switch (ext.ToLower())
 				{
 					case ".h":
-						return AdaHeaderFile.Save(this, fileName);
+						ok = AdaHeaderFile.Save(this, fileName);
+						break;
+					case ".bdf":
+						ok = BdfWriter.Save(this, fileName);
+						break;
 					case ".gfxfntx":
-						return GfxXmlFile.Save(this, fileName);
+						ok = GfxXmlFile.Save(this, fileName);
+						break;
 					case ".gfxfntb":
-						return GfxBinaryFile.Save(this, fileName);
+						ok = GfxBinaryFile.Save(this, fileName);
+						break;
 					default:
 						MessageBox.Show("Unsupported file extension for save", "Error saving file");
-						return false;
+						ok = false;
+						break;
 				}
-
 			}
 			catch (Exception exc)
 			{
 				MessageBox.Show(exc.Message, "Error saving file");
-				return false;
+				ok = false;
 			}
+			if (!ok)
+				FullPathName = saveFileName;
+			return ok;
+		}
+
+		/// <summary>
+		/// Process a string to contain only valid C identifier characters.
+		/// </summary>
+		/// <param name="id">String to process</param>
+		/// <returns>Valid ID string</returns>
+		public static string StringToID(string id)
+		{
+			var sb = new StringBuilder(id);
+			for (int i = 0; i < sb.Length; i++)
+			{
+				var c = sb[i];
+				if (char.IsLetter(c) || c == '_')
+					continue;
+				if (char.IsDigit(c) && i > 0)
+					continue;
+				sb[i] = '_';
+			}
+
+			return sb.ToString();
+		}
+
+		/// <summary>
+		/// Convert a full path file name to an ID using just the name without extension.
+		/// </summary>
+		/// <param name="fileName">The filename to use</param>
+		/// <returns>Valid ID string</returns>
+		public static string FileNameToID(string fileName) => StringToID(Path.GetFileNameWithoutExtension(fileName));
+	}
+
+	/// <summary>
+	/// Font properties that are interesting or necessary for some font file formats,
+	/// e.g. BDF files.
+	/// </summary>
+	public class FontProperties
+	{
+		private string _FontName;
+		[Browsable(true)]
+		public string FontName
+		{
+			get => _FontName;
+			set => _FontName = string.IsNullOrWhiteSpace(value) ? null : GfxFont.StringToID(value);
+		}
+
+		private int? _PixelSize;
+		[Browsable(true)]
+		public int? PixelSize
+		{
+			get => _PixelSize;
+			set => _PixelSize = !value.HasValue ? null : Math.Max(1, value.Value);
+		}
+
+		private int? _Ascent;
+		[Browsable(true)]
+		public int? Ascent
+		{
+			get => _Ascent;
+			set => _Ascent = !value.HasValue ? null : Math.Max(1, value.Value);
+		}
+
+		private int? _Descent;
+		[Browsable(true)]
+		public int? Descent
+		{
+			get => _Descent;
+			set => _Descent = !value.HasValue ? null : Math.Max(1, value.Value);
+		}
+
+		public FontProperties Clone()
+		{
+			return new()
+			{
+				FontName = FontName,
+				PixelSize = PixelSize,
+				Ascent = Ascent,
+				Descent = Descent,
+			};
+		}
+
+		/// <summary>
+		/// Display a modal UI for editing font properties.
+		/// </summary>
+		/// <param name="properties">A reference to the properties to edit</param>
+		/// <returns>True if the edit was comitted with the OK button</returns>
+		/// <remarks>
+		/// A clone of the given properties are presented for editing.
+		/// Only after the dialog is comitted with OK are the properties
+		/// set back into the reference, otherwise they remain unchanged.
+		/// </remarks>
+		public static bool Edit(ref FontProperties properties)
+		{
+			var DlgSettings = new PropertyBrowser()
+			{
+				Text = "Edit Font Properties"
+			};
+			DlgSettings.propertyGrid.SelectedObject = properties.Clone();
+			DlgSettings.propertyGrid.PropertySort = PropertySort.NoSort;
+			DlgSettings.propertyGrid.ToolbarVisible = false;
+			DlgSettings.propertyGrid.HelpVisible = false;
+			DlgSettings.MinimizeBox = false;
+			DlgSettings.MaximizeBox = false;
+
+			if (DlgSettings.ShowDialog(Application.OpenForms[0]) == DialogResult.OK)
+			{
+				properties = DlgSettings.propertyGrid.SelectedObject as FontProperties;
+				return true;
+			}
+			return false;
+		}
+
+		/// <summary>
+		/// Edit the font properties only if any are null (left to be defualted).
+		/// </summary>
+		/// <param name="properties">A reference to the properties to edit</param>
+		/// <returns>True if the edit was comitted with the OK button</returns>
+		public static bool EditIncomplete(ref FontProperties properties)
+		{
+			if (properties.FontName is not null && properties.PixelSize.HasValue && properties.Ascent.HasValue && properties.Descent.HasValue)
+				return false;
+			return Edit(ref properties);
 		}
 	}
 }
