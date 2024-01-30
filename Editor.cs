@@ -83,6 +83,10 @@ namespace GFXFontEditor
 		/// </summary>
 		int cellWidth = 30;
 
+		// offsets to center the glyph display
+		int cellXoff = 0;
+		int cellYoff = 0;
+
 		/// <summary>
 		/// Pixels to print for each glyph 'dot' in the pictureBoxFontView; a zoom factor.
 		/// </summary>
@@ -294,6 +298,9 @@ namespace GFXFontEditor
 			Properties.Settings.Default.Save();
 		}
 
+		// extra cells along the left and top for pictureBoxGlyph mouse interaction
+		const int gridMargin = 1;
+
 		/// <summary>
 		/// Recalc the cellWidth for the pictureBoxGlyph to reflect changes in the font or window size.
 		/// </summary>
@@ -305,6 +312,9 @@ namespace GFXFontEditor
 			cellWidth = Math.Min(60, Math.Max(2, pictureBoxGlyph.ClientSize.Width / rcFull.Width));
 			int cellHeight = Math.Min(60, Math.Max(2, pictureBoxGlyph.ClientSize.Height / rcFull.Height));
 			cellWidth = Math.Min(cellWidth, cellHeight);
+			// center the space within the picture box
+			cellXoff = (pictureBoxGlyph.ClientSize.Width - cellWidth * rcFull.Width) / 2;
+			cellYoff = (pictureBoxGlyph.ClientSize.Height - cellWidth * rcFull.Height) / 2;
 			pictureBoxGlyph.Invalidate();
 		}
 
@@ -316,9 +326,7 @@ namespace GFXFontEditor
 			RecalcDesignSpace();
 		}
 
-		// extra cells along the left and top for pictureBoxGlyph mouse interaction
-		const int colGridOffset = 1;
-		const int rowGridOffset = 1;
+		Rectangle rcFullCache = Rectangle.Empty;
 
 		/// <summary>
 		/// The full rectangle bounds for the pictureBoxGlyph rendering.
@@ -327,8 +335,13 @@ namespace GFXFontEditor
 		{
 			get
 			{
+				// cache the full bounds for use while a mouse
+				// operation is in progress to stabilize the view
+				if (CurrentFont is null || pictureBoxGlyph.Capture)
+					return rcFullCache;
 				var rc = CurrentFont.FullBounds;
-				return new Rectangle(rc.Left - colGridOffset, rc.Top - rowGridOffset, rc.Width + 2, rc.Height + 2);
+				rcFullCache = new Rectangle(rc.Left - gridMargin, rc.Top - gridMargin, rc.Width + 2 * gridMargin, rc.Height + 2 * gridMargin);
+				return rcFullCache;
 			}
 		}
 
@@ -353,7 +366,7 @@ namespace GFXFontEditor
 		(int col, int row) MouseToCell(int x, int y)
 		{
 			//Rectangle rcFull = Rectangle.Union(GfxFont.Bounds(), new Rectangle(0, -GfxFont.yAdvance, GfxFont.MaxAdvance(), GfxFont.yAdvance));
-			return (x / cellWidth + rcFull.Left, y / cellWidth + rcFull.Top);
+			return ((x - cellXoff) / cellWidth + rcFull.Left, (y - cellYoff) / cellWidth + rcFull.Top);
 		}
 
 		/// <summary>
@@ -362,7 +375,7 @@ namespace GFXFontEditor
 		/// </summary>
 		(int x, int y) CellToMouse(int col, int row)
 		{
-			return ((col - rcFull.Left) * cellWidth, (row - rcFull.Top) * cellWidth);
+			return ((col - rcFull.Left) * cellWidth + cellXoff, (row - rcFull.Top) * cellWidth + cellYoff);
 		}
 
 		/// <summary>
@@ -380,9 +393,9 @@ namespace GFXFontEditor
 
 			var rcGlyph = new Rectangle(0, -CurrentFont.yAdvance, glyph.xAdvance, CurrentFont.yAdvance);
 			// scan the full grid of possible pixels/dots to be rendered
-			for (int row = rcFull.Top + 1; row < rcFull.Bottom - 1; row++)
+			for (int row = rcFull.Top; row < rcFull.Bottom; row++)
 			{
-				for (int col = rcFull.Left + 1; col < rcFull.Right - 1; col++)
+				for (int col = rcFull.Left; col < rcFull.Right; col++)
 				{
 					(int left, int top) = CellToMouse(col, row);
 					Rectangle rcCell = new(left, top, cellWidth, cellWidth);
@@ -409,10 +422,15 @@ namespace GFXFontEditor
 						// are light slate gray
 						gr.FillRectangle(Brushes.LightSlateGray, rcCell);
 					}
-					else
+					else if (CurrentFont.FullBounds.Contains(col, row))
 					{
 						// dots outside the Glyph bounds in dim gray
 						gr.FillRectangle(Brushes.DimGray, rcCell);
+					}
+					else
+					{
+						// dots outside the editing area bounds in gray
+						gr.FillRectangle(Brushes.Gray, rcCell);
 					}
 				}
 			}
@@ -429,6 +447,7 @@ namespace GFXFontEditor
 
 		bool DragBmp;           // dragging the Glyph's bmp dots
 		bool Draw;              // drawing dots
+		bool DrawState;			// bit state to draw
 		int ColStart;           // grid column where mouse operation started
 		int RowStart;           // grid row where mouse operation started
 		int ColLast;            // column of most recent mouse operation
@@ -468,12 +487,13 @@ namespace GFXFontEditor
 				}
 				else if (rcFull.Contains(ColStart, RowStart))
 				{
-					// drawing (toggling) glyph dots
+					// drawing glyph dots
 					pictureBoxGlyph.Capture = true;
 					pictureBoxGlyph.Cursor = Cursors.Hand;
 					Draw = true;
-					//Debug.WriteLine($"MouseDown toggle {ColStart}, {RowStart}");
-					ToggleBit(ColStart, RowStart);
+					// start drawing with tthe opposite state of the current bit
+					DrawState = !CurrentGlyph.Get(ColStart, RowStart);
+					DrawBit(ColStart, RowStart);
 				}
 			}
 			else if (e.Button == MouseButtons.Right)
@@ -488,7 +508,6 @@ namespace GFXFontEditor
 					ColLast = ColStart;
 					RowLast = RowStart;
 				}
-
 			}
 		}
 
@@ -515,11 +534,11 @@ namespace GFXFontEditor
 			}
 			if (Draw)
 			{
-				// keep toggling grid cell dots for the glyph
+				// keep drawing grid cell dots for the glyph
 				// as the mouse moves from cell to cell
 				(int col, int row) = MouseToCell(e.X, e.Y);
 				if (col != ColLast || row != RowLast && rcFull.Contains(col, row))
-					ToggleBit(col, row);
+					DrawBit(col, row);
 			}
 			else if (DragYAdvance)
 			{
@@ -594,14 +613,18 @@ namespace GFXFontEditor
 		}
 
 		/// <summary>
-		/// Toggle the state of a pixel dot for the glyph.
+		/// Set the state of a pixel dot for the glyph.
 		/// </summary>
-		/// <param name="col">Column of the pixel to toggle</param>
-		/// <param name="row">Row of the pixel to toggle</param>
-		/// 
-		private void ToggleBit(int col, int row)
+		/// <param name="col">Column of the pixel to set</param>
+		/// <param name="row">Row of the pixel to set</param>
+		private void DrawBit(int col, int row)
 		{
-			CurrentGlyph.Toggle(col, row);
+			// limit changes to the margin around the font bounds
+			// of the design area, otherwise it can get hard to manage
+			if (!rcFull.Contains(col, row))
+				return;
+			if (CurrentGlyph.Get(col, row) != DrawState)
+				CurrentGlyph.Toggle(col, row);
 			ColLast = col;
 			RowLast = row;
 			OnChange();
