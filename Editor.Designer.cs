@@ -121,7 +121,7 @@
 			// 
 			newToolStripMenuItem.Name = "newToolStripMenuItem";
 			newToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.N;
-			newToolStripMenuItem.Size = new Size(271, 34);
+			newToolStripMenuItem.Size = new Size(283, 34);
 			newToolStripMenuItem.Text = "&New";
 			newToolStripMenuItem.Click += newToolStripMenuItem_Click;
 			// 
@@ -129,15 +129,15 @@
 			// 
 			openToolStripMenuItem.Name = "openToolStripMenuItem";
 			openToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.O;
-			openToolStripMenuItem.Size = new Size(271, 34);
-			openToolStripMenuItem.Text = "&Open";
+			openToolStripMenuItem.Size = new Size(283, 34);
+			openToolStripMenuItem.Text = "&Open...";
 			openToolStripMenuItem.Click += openToolStripMenuItem_Click;
 			// 
 			// saveToolStripMenuItem
 			// 
 			saveToolStripMenuItem.Name = "saveToolStripMenuItem";
 			saveToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.S;
-			saveToolStripMenuItem.Size = new Size(271, 34);
+			saveToolStripMenuItem.Size = new Size(283, 34);
 			saveToolStripMenuItem.Text = "&Save";
 			saveToolStripMenuItem.Click += saveToolStripMenuItem_Click;
 			// 
@@ -145,28 +145,28 @@
 			// 
 			saveAsToolStripMenuItem.Name = "saveAsToolStripMenuItem";
 			saveAsToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.Alt | Keys.S;
-			saveAsToolStripMenuItem.Size = new Size(271, 34);
-			saveAsToolStripMenuItem.Text = "Save &As";
+			saveAsToolStripMenuItem.Size = new Size(283, 34);
+			saveAsToolStripMenuItem.Text = "Save &As...";
 			saveAsToolStripMenuItem.Click += saveAsToolStripMenuItem_Click;
 			// 
 			// recentFilesToolStripMenuItem
 			// 
 			recentFilesToolStripMenuItem.Name = "recentFilesToolStripMenuItem";
-			recentFilesToolStripMenuItem.Size = new Size(271, 34);
+			recentFilesToolStripMenuItem.Size = new Size(283, 34);
 			recentFilesToolStripMenuItem.Text = "&Recent Files";
 			// 
 			// editFontPropertiesToolStripMenuItem
 			// 
 			editFontPropertiesToolStripMenuItem.Name = "editFontPropertiesToolStripMenuItem";
-			editFontPropertiesToolStripMenuItem.Size = new Size(271, 34);
-			editFontPropertiesToolStripMenuItem.Text = "Edit Font Properties";
+			editFontPropertiesToolStripMenuItem.Size = new Size(283, 34);
+			editFontPropertiesToolStripMenuItem.Text = "Edit Font Properties...";
 			editFontPropertiesToolStripMenuItem.Click += editFontPropertiesToolStripMenuItem_Click;
 			// 
 			// aboutToolStripMenuItem
 			// 
 			aboutToolStripMenuItem.Name = "aboutToolStripMenuItem";
-			aboutToolStripMenuItem.Size = new Size(271, 34);
-			aboutToolStripMenuItem.Text = "About";
+			aboutToolStripMenuItem.Size = new Size(283, 34);
+			aboutToolStripMenuItem.Text = "About...";
 			aboutToolStripMenuItem.Click += aboutToolStripMenuItem_Click;
 			// 
 			// toolStripButtonNextFile

@@ -1601,25 +1601,26 @@ namespace GFXFontEditor
 				AppMoreInfo =
 
 			"This program is licensed under the GNU General Public License v3.0:" +
-			Environment.NewLine + Environment.NewLine +
+			Environment.NewLine +
 			"https://www.gnu.org/licenses/gpl-3.0.en.html"
 
 			+ Environment.NewLine + Environment.NewLine +
 
 			"View the author's GitHub page for the most up-to-date version and more information:" +
-			Environment.NewLine + Environment.NewLine +
+			Environment.NewLine +
 			"https://github.com/ScottFerg56/GFXFontEditor"
 
 			+ Environment.NewLine + Environment.NewLine +
 
-			"Hundreds of useful bitmap fonts in YAFF format can be found at Rob Hagemans' hoard:" +
-			Environment.NewLine + Environment.NewLine +
-			"https://github.com/robhagemans/hoard-of-bitfonts"
+			"Check out Rob Hagemans' hoard-of-bitfonts on GitHub where you can browse and download" +
+			" BDF versions of many useful fonts:" +
+			Environment.NewLine +
+			"http://robhagemans.github.io/monobit/"
 
 			+ Environment.NewLine + Environment.NewLine +
 
-			"Adafruit provides a collection of free bitmap fonts in header (.h) form at their GitHub site:" +
-			Environment.NewLine + Environment.NewLine +
+			"Adafruit provides a collection of free bitmap fonts in header (.h) format at their GitHub site:" +
+			Environment.NewLine +
 			"https://github.com/adafruit/Adafruit-GFX-Library/tree/master/Fonts"
 
 			};

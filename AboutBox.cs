@@ -362,7 +362,9 @@ namespace GFXFontEditor
 		private void PopulateLabels()
 		{
 			FWVersionLabel.Text =
-#if NET6_0
+#if NET7_0       
+			".NET 7.0";
+#elif NET6_0
 			".NET 6.0";
 #elif NET5_0
 			".NET 5.0";
