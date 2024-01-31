@@ -85,6 +85,6 @@ Use the PixelsPerDot control in the Tool Bar to scale the view.
 The Sample Text control in the Tool Bar establishes the set of glyphs to view.
 When left blank, all glyphs will be displayed.
 Characters can be entered with the keyboard, or specific code values can be entered
-by number as an escape code in the style of \u0000 with FOUR hex digits. Two slashes '\\' are required
-to represent a single slash '\'.
+by number as an escape code in the style of \u0000 with FOUR hex digits. Two slashes '\\\\' are required
+to represent a single slash '\\'.
 Characters in the Sample Text not present in the font glyph list have placeholders in the view of a vertical yellow bar.
