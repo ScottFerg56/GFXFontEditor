@@ -102,7 +102,7 @@
 			toolStrip1.Items.AddRange(new ToolStripItem[] { toolStripDropDownButtonFile, toolStripButtonNextFile, toolStripSeparator1, toolStripLabelHeight, toolStripLabelNumGlyphs, toolStripSeparator2, toolStripLabel1, toolStripNumberControlPPD, toolStripLabel2, toolStripTextBoxFVText });
 			toolStrip1.Location = new Point(0, 0);
 			toolStrip1.Name = "toolStrip1";
-			toolStrip1.Size = new Size(1729, 36);
+			toolStrip1.Size = new Size(1210, 26);
 			toolStrip1.TabIndex = 0;
 			toolStrip1.Text = "toolStrip1";
 			// 
@@ -110,10 +110,9 @@
 			// 
 			toolStripDropDownButtonFile.DisplayStyle = ToolStripItemDisplayStyle.Text;
 			toolStripDropDownButtonFile.DropDownItems.AddRange(new ToolStripItem[] { newToolStripMenuItem, openToolStripMenuItem, saveToolStripMenuItem, saveAsToolStripMenuItem, recentFilesToolStripMenuItem, editFontPropertiesToolStripMenuItem, aboutToolStripMenuItem });
-			toolStripDropDownButtonFile.Image = (Image)resources.GetObject("toolStripDropDownButtonFile.Image");
 			toolStripDropDownButtonFile.ImageTransparentColor = Color.Magenta;
 			toolStripDropDownButtonFile.Name = "toolStripDropDownButtonFile";
-			toolStripDropDownButtonFile.Size = new Size(56, 31);
+			toolStripDropDownButtonFile.Size = new Size(38, 23);
 			toolStripDropDownButtonFile.Text = "&File";
 			toolStripDropDownButtonFile.DropDownOpening += toolStripDropDownButtonFile_DropDownOpening;
 			// 
@@ -121,7 +120,7 @@
 			// 
 			newToolStripMenuItem.Name = "newToolStripMenuItem";
 			newToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.N;
-			newToolStripMenuItem.Size = new Size(283, 34);
+			newToolStripMenuItem.Size = new Size(186, 22);
 			newToolStripMenuItem.Text = "&New";
 			newToolStripMenuItem.Click += newToolStripMenuItem_Click;
 			// 
@@ -129,7 +128,7 @@
 			// 
 			openToolStripMenuItem.Name = "openToolStripMenuItem";
 			openToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.O;
-			openToolStripMenuItem.Size = new Size(283, 34);
+			openToolStripMenuItem.Size = new Size(186, 22);
 			openToolStripMenuItem.Text = "&Open...";
 			openToolStripMenuItem.Click += openToolStripMenuItem_Click;
 			// 
@@ -137,7 +136,7 @@
 			// 
 			saveToolStripMenuItem.Name = "saveToolStripMenuItem";
 			saveToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.S;
-			saveToolStripMenuItem.Size = new Size(283, 34);
+			saveToolStripMenuItem.Size = new Size(186, 22);
 			saveToolStripMenuItem.Text = "&Save";
 			saveToolStripMenuItem.Click += saveToolStripMenuItem_Click;
 			// 
@@ -145,27 +144,27 @@
 			// 
 			saveAsToolStripMenuItem.Name = "saveAsToolStripMenuItem";
 			saveAsToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.Alt | Keys.S;
-			saveAsToolStripMenuItem.Size = new Size(283, 34);
+			saveAsToolStripMenuItem.Size = new Size(186, 22);
 			saveAsToolStripMenuItem.Text = "Save &As...";
 			saveAsToolStripMenuItem.Click += saveAsToolStripMenuItem_Click;
 			// 
 			// recentFilesToolStripMenuItem
 			// 
 			recentFilesToolStripMenuItem.Name = "recentFilesToolStripMenuItem";
-			recentFilesToolStripMenuItem.Size = new Size(283, 34);
+			recentFilesToolStripMenuItem.Size = new Size(186, 22);
 			recentFilesToolStripMenuItem.Text = "&Recent Files";
 			// 
 			// editFontPropertiesToolStripMenuItem
 			// 
 			editFontPropertiesToolStripMenuItem.Name = "editFontPropertiesToolStripMenuItem";
-			editFontPropertiesToolStripMenuItem.Size = new Size(283, 34);
+			editFontPropertiesToolStripMenuItem.Size = new Size(186, 22);
 			editFontPropertiesToolStripMenuItem.Text = "Edit Font Properties...";
 			editFontPropertiesToolStripMenuItem.Click += editFontPropertiesToolStripMenuItem_Click;
 			// 
 			// aboutToolStripMenuItem
 			// 
 			aboutToolStripMenuItem.Name = "aboutToolStripMenuItem";
-			aboutToolStripMenuItem.Size = new Size(283, 34);
+			aboutToolStripMenuItem.Size = new Size(186, 22);
 			aboutToolStripMenuItem.Text = "About...";
 			aboutToolStripMenuItem.Click += aboutToolStripMenuItem_Click;
 			// 
@@ -174,10 +173,9 @@
 			toolStripButtonNextFile.Alignment = ToolStripItemAlignment.Right;
 			toolStripButtonNextFile.DisplayStyle = ToolStripItemDisplayStyle.Text;
 			toolStripButtonNextFile.Font = new Font("Segoe UI", 9F, FontStyle.Bold, GraphicsUnit.Point);
-			toolStripButtonNextFile.Image = (Image)resources.GetObject("toolStripButtonNextFile.Image");
 			toolStripButtonNextFile.ImageTransparentColor = Color.Magenta;
 			toolStripButtonNextFile.Name = "toolStripButtonNextFile";
-			toolStripButtonNextFile.Size = new Size(101, 31);
+			toolStripButtonNextFile.Size = new Size(67, 23);
 			toolStripButtonNextFile.Text = "Next File: ";
 			toolStripButtonNextFile.Visible = false;
 			toolStripButtonNextFile.Click += toolStripButtonNextFile_Click;
@@ -185,58 +183,59 @@
 			// toolStripSeparator1
 			// 
 			toolStripSeparator1.Name = "toolStripSeparator1";
-			toolStripSeparator1.Size = new Size(6, 36);
+			toolStripSeparator1.Size = new Size(6, 26);
 			// 
 			// toolStripLabelHeight
 			// 
 			toolStripLabelHeight.Font = new Font("Segoe UI", 9F, FontStyle.Bold, GraphicsUnit.Point);
 			toolStripLabelHeight.Name = "toolStripLabelHeight";
-			toolStripLabelHeight.Size = new Size(70, 31);
+			toolStripLabelHeight.Size = new Size(45, 23);
 			toolStripLabelHeight.Text = "Height";
 			// 
 			// toolStripLabelNumGlyphs
 			// 
 			toolStripLabelNumGlyphs.Font = new Font("Segoe UI", 9F, FontStyle.Bold, GraphicsUnit.Point);
 			toolStripLabelNumGlyphs.Name = "toolStripLabelNumGlyphs";
-			toolStripLabelNumGlyphs.Size = new Size(96, 31);
+			toolStripLabelNumGlyphs.Size = new Size(60, 23);
 			toolStripLabelNumGlyphs.Text = "# Glyphs: ";
 			// 
 			// toolStripSeparator2
 			// 
 			toolStripSeparator2.Name = "toolStripSeparator2";
-			toolStripSeparator2.Size = new Size(6, 36);
+			toolStripSeparator2.Size = new Size(6, 26);
 			// 
 			// toolStripLabel1
 			// 
 			toolStripLabel1.Font = new Font("Segoe UI", 9F, FontStyle.Bold, GraphicsUnit.Point);
 			toolStripLabel1.Name = "toolStripLabel1";
-			toolStripLabel1.Size = new Size(154, 31);
+			toolStripLabel1.Size = new Size(100, 23);
 			toolStripLabel1.Text = "   Pixels Per Dot: ";
 			// 
 			// toolStripNumberControlPPD
 			// 
 			toolStripNumberControlPPD.Name = "toolStripNumberControlPPD";
-			toolStripNumberControlPPD.Size = new Size(66, 31);
+			toolStripNumberControlPPD.Size = new Size(41, 23);
 			toolStripNumberControlPPD.Text = "0";
 			// 
 			// toolStripLabel2
 			// 
 			toolStripLabel2.Font = new Font("Segoe UI", 9F, FontStyle.Bold, GraphicsUnit.Point);
 			toolStripLabel2.Name = "toolStripLabel2";
-			toolStripLabel2.Size = new Size(135, 31);
+			toolStripLabel2.Size = new Size(88, 23);
 			toolStripLabel2.Text = "   Sample Text:";
 			// 
 			// toolStripTextBoxFVText
 			// 
 			toolStripTextBoxFVText.BackColor = Color.LightGray;
 			toolStripTextBoxFVText.Name = "toolStripTextBoxFVText";
-			toolStripTextBoxFVText.Size = new Size(300, 36);
+			toolStripTextBoxFVText.Size = new Size(211, 26);
 			toolStripTextBoxFVText.TextChanged += toolStripTextBoxFVText_TextChanged;
 			// 
 			// splitContainer1
 			// 
 			splitContainer1.Dock = DockStyle.Fill;
 			splitContainer1.Location = new Point(0, 0);
+			splitContainer1.Margin = new Padding(2);
 			splitContainer1.Name = "splitContainer1";
 			// 
 			// splitContainer1.Panel1
@@ -250,8 +249,10 @@
 			splitContainer1.Panel2.Controls.Add(label1);
 			splitContainer1.Panel2.Controls.Add(listViewGlyphs);
 			splitContainer1.Panel2.Controls.Add(buttonDummy);
-			splitContainer1.Size = new Size(1729, 862);
-			splitContainer1.SplitterDistance = 1104;
+			splitContainer1.Panel2.Resize += splitContainer1_Panel2_Resize;
+			splitContainer1.Size = new Size(1210, 484);
+			splitContainer1.SplitterDistance = 772;
+			splitContainer1.SplitterWidth = 3;
 			splitContainer1.TabIndex = 1;
 			// 
 			// pictureBoxGlyph
@@ -259,8 +260,9 @@
 			pictureBoxGlyph.BackColor = Color.Gray;
 			pictureBoxGlyph.Dock = DockStyle.Fill;
 			pictureBoxGlyph.Location = new Point(0, 0);
+			pictureBoxGlyph.Margin = new Padding(2);
 			pictureBoxGlyph.Name = "pictureBoxGlyph";
-			pictureBoxGlyph.Size = new Size(1104, 862);
+			pictureBoxGlyph.Size = new Size(772, 484);
 			pictureBoxGlyph.TabIndex = 0;
 			pictureBoxGlyph.TabStop = false;
 			pictureBoxGlyph.Paint += pictureBoxGlyph_Paint;
@@ -275,9 +277,10 @@
 			checkBoxHexCode.Checked = true;
 			checkBoxHexCode.CheckState = CheckState.Checked;
 			checkBoxHexCode.Font = new Font("Segoe UI", 9F, FontStyle.Bold, GraphicsUnit.Point);
-			checkBoxHexCode.Location = new Point(240, 13);
+			checkBoxHexCode.Location = new Point(168, 8);
+			checkBoxHexCode.Margin = new Padding(2);
 			checkBoxHexCode.Name = "checkBoxHexCode";
-			checkBoxHexCode.Size = new Size(72, 29);
+			checkBoxHexCode.Size = new Size(49, 19);
 			checkBoxHexCode.TabIndex = 4;
 			checkBoxHexCode.Text = "Hex";
 			checkBoxHexCode.UseVisualStyleBackColor = true;
@@ -286,10 +289,11 @@
 			// numericUpDownGlyphCode
 			// 
 			numericUpDownGlyphCode.Hexadecimal = true;
-			numericUpDownGlyphCode.Location = new Point(135, 11);
+			numericUpDownGlyphCode.Location = new Point(94, 7);
+			numericUpDownGlyphCode.Margin = new Padding(2);
 			numericUpDownGlyphCode.Maximum = new decimal(new int[] { 65535, 0, 0, 0 });
 			numericUpDownGlyphCode.Name = "numericUpDownGlyphCode";
-			numericUpDownGlyphCode.Size = new Size(82, 31);
+			numericUpDownGlyphCode.Size = new Size(57, 23);
 			numericUpDownGlyphCode.TabIndex = 2;
 			numericUpDownGlyphCode.ValueChanged += numericUpDownGlyphCode_ValueChanged;
 			// 
@@ -297,9 +301,10 @@
 			// 
 			label1.AutoSize = true;
 			label1.Font = new Font("Segoe UI", 9F, FontStyle.Bold, GraphicsUnit.Point);
-			label1.Location = new Point(14, 12);
+			label1.Location = new Point(10, 7);
+			label1.Margin = new Padding(2, 0, 2, 0);
 			label1.Name = "label1";
-			label1.Size = new Size(115, 25);
+			label1.Size = new Size(73, 15);
 			label1.TabIndex = 1;
 			label1.Text = "Glyph Code:";
 			// 
@@ -311,9 +316,10 @@
 			listViewGlyphs.ContextMenuStrip = contextMenuStripGlyphList;
 			listViewGlyphs.FullRowSelect = true;
 			listViewGlyphs.GridLines = true;
-			listViewGlyphs.Location = new Point(0, 51);
+			listViewGlyphs.Location = new Point(0, 31);
+			listViewGlyphs.Margin = new Padding(2);
 			listViewGlyphs.Name = "listViewGlyphs";
-			listViewGlyphs.Size = new Size(621, 811);
+			listViewGlyphs.Size = new Size(438, 451);
 			listViewGlyphs.TabIndex = 0;
 			listViewGlyphs.UseCompatibleStateImageBehavior = false;
 			listViewGlyphs.View = View.Details;
@@ -373,14 +379,14 @@
 			contextMenuStripGlyphList.ImageScalingSize = new Size(24, 24);
 			contextMenuStripGlyphList.Items.AddRange(new ToolStripItem[] { insertToolStripMenuItem, deleteToolStripMenuItem, cutToolStripMenuItem, copyToolStripMenuItem, pasteToolStripMenuItem, pasteInsertToolStripMenuItem, flipHorizontalToolStripMenuItem, flipVerticalToolStripMenuItem, rotate90CWToolStripMenuItem, rotate90CCWToolStripMenuItem, rotate180ToolStripMenuItem, clearToolStripMenuItem, setRectToolStripMenuItem, flattenGlyphListToolStripMenuItem, addToSampleTextToolStripMenuItem });
 			contextMenuStripGlyphList.Name = "contextMenuStrip1";
-			contextMenuStripGlyphList.Size = new Size(255, 484);
+			contextMenuStripGlyphList.Size = new Size(187, 334);
 			contextMenuStripGlyphList.Opening += contextMenuStripGlyphList_Opening;
 			// 
 			// insertToolStripMenuItem
 			// 
 			insertToolStripMenuItem.Name = "insertToolStripMenuItem";
 			insertToolStripMenuItem.ShortcutKeyDisplayString = "Ins";
-			insertToolStripMenuItem.Size = new Size(254, 32);
+			insertToolStripMenuItem.Size = new Size(186, 22);
 			insertToolStripMenuItem.Text = "Insert New Glyph";
 			insertToolStripMenuItem.Click += insertToolStripMenuItem_Click;
 			// 
@@ -388,7 +394,7 @@
 			// 
 			deleteToolStripMenuItem.Name = "deleteToolStripMenuItem";
 			deleteToolStripMenuItem.ShortcutKeyDisplayString = "Del";
-			deleteToolStripMenuItem.Size = new Size(254, 32);
+			deleteToolStripMenuItem.Size = new Size(186, 22);
 			deleteToolStripMenuItem.Text = "Delete";
 			deleteToolStripMenuItem.Click += deleteToolStripMenuItem_Click;
 			// 
@@ -396,7 +402,7 @@
 			// 
 			cutToolStripMenuItem.Name = "cutToolStripMenuItem";
 			cutToolStripMenuItem.ShortcutKeyDisplayString = "Ctrl+X";
-			cutToolStripMenuItem.Size = new Size(254, 32);
+			cutToolStripMenuItem.Size = new Size(186, 22);
 			cutToolStripMenuItem.Text = "Cut";
 			cutToolStripMenuItem.Click += cutToolStripMenuItem_Click;
 			// 
@@ -404,14 +410,14 @@
 			// 
 			copyToolStripMenuItem.Name = "copyToolStripMenuItem";
 			copyToolStripMenuItem.ShortcutKeyDisplayString = "Ctrl+C";
-			copyToolStripMenuItem.Size = new Size(254, 32);
+			copyToolStripMenuItem.Size = new Size(186, 22);
 			copyToolStripMenuItem.Text = "Copy";
 			copyToolStripMenuItem.Click += copyToolStripMenuItem_Click;
 			// 
 			// pasteToolStripMenuItem
 			// 
 			pasteToolStripMenuItem.Name = "pasteToolStripMenuItem";
-			pasteToolStripMenuItem.Size = new Size(254, 32);
+			pasteToolStripMenuItem.Size = new Size(186, 22);
 			pasteToolStripMenuItem.Text = "Paste to Existing";
 			pasteToolStripMenuItem.Click += pasteToolStripMenuItem_Click;
 			// 
@@ -419,78 +425,79 @@
 			// 
 			pasteInsertToolStripMenuItem.Name = "pasteInsertToolStripMenuItem";
 			pasteInsertToolStripMenuItem.ShortcutKeyDisplayString = "Ctrl+V";
-			pasteInsertToolStripMenuItem.Size = new Size(254, 32);
+			pasteInsertToolStripMenuItem.Size = new Size(186, 22);
 			pasteInsertToolStripMenuItem.Text = "Paste Insert";
 			pasteInsertToolStripMenuItem.Click += pasteInsertToolStripMenuItem_Click;
 			// 
 			// flipHorizontalToolStripMenuItem
 			// 
 			flipHorizontalToolStripMenuItem.Name = "flipHorizontalToolStripMenuItem";
-			flipHorizontalToolStripMenuItem.Size = new Size(254, 32);
+			flipHorizontalToolStripMenuItem.Size = new Size(186, 22);
 			flipHorizontalToolStripMenuItem.Text = "Flip Horizontal";
 			flipHorizontalToolStripMenuItem.Click += flipHorizontalToolStripMenuItem_Click;
 			// 
 			// flipVerticalToolStripMenuItem
 			// 
 			flipVerticalToolStripMenuItem.Name = "flipVerticalToolStripMenuItem";
-			flipVerticalToolStripMenuItem.Size = new Size(254, 32);
+			flipVerticalToolStripMenuItem.Size = new Size(186, 22);
 			flipVerticalToolStripMenuItem.Text = "Flip Vertical";
 			flipVerticalToolStripMenuItem.Click += flipVerticalToolStripMenuItem_Click;
 			// 
 			// rotate90CWToolStripMenuItem
 			// 
 			rotate90CWToolStripMenuItem.Name = "rotate90CWToolStripMenuItem";
-			rotate90CWToolStripMenuItem.Size = new Size(254, 32);
+			rotate90CWToolStripMenuItem.Size = new Size(186, 22);
 			rotate90CWToolStripMenuItem.Text = "Rotate 90° CW";
 			rotate90CWToolStripMenuItem.Click += rotate90CWToolStripMenuItem_Click;
 			// 
 			// rotate90CCWToolStripMenuItem
 			// 
 			rotate90CCWToolStripMenuItem.Name = "rotate90CCWToolStripMenuItem";
-			rotate90CCWToolStripMenuItem.Size = new Size(254, 32);
+			rotate90CCWToolStripMenuItem.Size = new Size(186, 22);
 			rotate90CCWToolStripMenuItem.Text = "Rotate 90° CCW";
 			rotate90CCWToolStripMenuItem.Click += rotate90CCWToolStripMenuItem_Click;
 			// 
 			// rotate180ToolStripMenuItem
 			// 
 			rotate180ToolStripMenuItem.Name = "rotate180ToolStripMenuItem";
-			rotate180ToolStripMenuItem.Size = new Size(254, 32);
+			rotate180ToolStripMenuItem.Size = new Size(186, 22);
 			rotate180ToolStripMenuItem.Text = "Rotate 180°";
 			rotate180ToolStripMenuItem.Click += rotate180ToolStripMenuItem_Click;
 			// 
 			// clearToolStripMenuItem
 			// 
 			clearToolStripMenuItem.Name = "clearToolStripMenuItem";
-			clearToolStripMenuItem.Size = new Size(254, 32);
+			clearToolStripMenuItem.Size = new Size(186, 22);
 			clearToolStripMenuItem.Text = "Clear Glyph";
 			clearToolStripMenuItem.Click += clearToolStripMenuItem_Click;
 			// 
 			// setRectToolStripMenuItem
 			// 
 			setRectToolStripMenuItem.Name = "setRectToolStripMenuItem";
-			setRectToolStripMenuItem.Size = new Size(254, 32);
+			setRectToolStripMenuItem.Size = new Size(186, 22);
 			setRectToolStripMenuItem.Text = "Set Glyph as Rect";
 			setRectToolStripMenuItem.Click += setRectToolStripMenuItem_Click;
 			// 
 			// flattenGlyphListToolStripMenuItem
 			// 
 			flattenGlyphListToolStripMenuItem.Name = "flattenGlyphListToolStripMenuItem";
-			flattenGlyphListToolStripMenuItem.Size = new Size(254, 32);
+			flattenGlyphListToolStripMenuItem.Size = new Size(186, 22);
 			flattenGlyphListToolStripMenuItem.Text = "Flatten Glyph List";
 			flattenGlyphListToolStripMenuItem.Click += flattenGlyphListToolStripMenuItem_Click;
 			// 
 			// addToSampleTextToolStripMenuItem
 			// 
 			addToSampleTextToolStripMenuItem.Name = "addToSampleTextToolStripMenuItem";
-			addToSampleTextToolStripMenuItem.Size = new Size(254, 32);
+			addToSampleTextToolStripMenuItem.Size = new Size(186, 22);
 			addToSampleTextToolStripMenuItem.Text = "Add to Sample Text";
 			addToSampleTextToolStripMenuItem.Click += addToSampleTextToolStripMenuItem_Click;
 			// 
 			// buttonDummy
 			// 
-			buttonDummy.Location = new Point(248, 272);
+			buttonDummy.Location = new Point(174, 163);
+			buttonDummy.Margin = new Padding(2);
 			buttonDummy.Name = "buttonDummy";
-			buttonDummy.Size = new Size(112, 34);
+			buttonDummy.Size = new Size(78, 20);
 			buttonDummy.TabIndex = 3;
 			buttonDummy.TabStop = false;
 			buttonDummy.Text = "dummy";
@@ -500,7 +507,8 @@
 			// splitContainer2
 			// 
 			splitContainer2.Dock = DockStyle.Fill;
-			splitContainer2.Location = new Point(0, 36);
+			splitContainer2.Location = new Point(0, 26);
+			splitContainer2.Margin = new Padding(2);
 			splitContainer2.Name = "splitContainer2";
 			splitContainer2.Orientation = Orientation.Horizontal;
 			// 
@@ -514,13 +522,15 @@
 			splitContainer2.Panel2.BackColor = Color.FromArgb(50, 50, 50);
 			splitContainer2.Panel2.Controls.Add(pictureBoxFontView);
 			splitContainer2.Panel2.Resize += splitContainer2_Panel2_Resize;
-			splitContainer2.Size = new Size(1729, 1088);
-			splitContainer2.SplitterDistance = 862;
+			splitContainer2.Size = new Size(1210, 611);
+			splitContainer2.SplitterDistance = 484;
+			splitContainer2.SplitterWidth = 2;
 			splitContainer2.TabIndex = 2;
 			// 
 			// pictureBoxFontView
 			// 
-			pictureBoxFontView.Location = new Point(0, 3);
+			pictureBoxFontView.Location = new Point(0, 2);
+			pictureBoxFontView.Margin = new Padding(2);
 			pictureBoxFontView.Name = "pictureBoxFontView";
 			pictureBoxFontView.Size = new Size(150, 75);
 			pictureBoxFontView.SizeMode = PictureBoxSizeMode.AutoSize;
@@ -533,12 +543,13 @@
 			// 
 			AcceptButton = buttonDummy;
 			AllowDrop = true;
-			AutoScaleDimensions = new SizeF(10F, 25F);
+			AutoScaleDimensions = new SizeF(7F, 15F);
 			AutoScaleMode = AutoScaleMode.Font;
-			ClientSize = new Size(1729, 1124);
+			ClientSize = new Size(1210, 637);
 			Controls.Add(splitContainer2);
 			Controls.Add(toolStrip1);
 			Icon = (Icon)resources.GetObject("$this.Icon");
+			Margin = new Padding(2);
 			Name = "Editor";
 			StartPosition = FormStartPosition.CenterScreen;
 			Text = "GFX Font Editor";

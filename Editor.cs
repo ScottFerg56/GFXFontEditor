@@ -90,7 +90,7 @@ namespace GFXFontEditor
 		/// <summary>
 		/// Pixels to print for each glyph 'dot' in the pictureBoxFontView; a zoom factor.
 		/// </summary>
-		int PixelsPerDot = 3;
+		int PixelsPerDot = 2;
 
 		/// <summary>
 		///  Set the title Text of the form based on the current font filename and changed state.
@@ -1712,6 +1712,12 @@ namespace GFXFontEditor
 			saveToolStripMenuItem.Enabled = enable;
 			saveAsToolStripMenuItem.Enabled = enable;
 			editFontPropertiesToolStripMenuItem.Enabled = enable;
+		}
+
+		private void splitContainer1_Panel2_Resize(object sender, EventArgs e)
+		{
+			// for DPI: adjust margin between glyph code and glyph list 
+			listViewGlyphs.Top = numericUpDownGlyphCode.Bottom + numericUpDownGlyphCode.Top;
 		}
 	}
 
