@@ -1,6 +1,9 @@
 # GFX Font Editor
 An editor for bitmap fonts for use with the Adafruit GFX Libraries.
 
+[This program runs on Microsoft Windows and the .NET 7 runtime,
+which will be required to be installed on first run, if not already present on the system.]
+
 ## Supported font file formats
 
 ### GFXfont C header (.h) file (Load & Save)
@@ -43,13 +46,20 @@ But the basic concept applies to Arduino devices in general and other file syste
 ![User Interface](Images/GFXFontEditor.png)
 
 ### Tool Bar
-The File Menu contains the usual file operations, plus __*Edit Font Properties*__ for saving as BDF.
+The File Menu contains the usual file operations.
+You can also drag & drop supported font files onto the UI for loading.
+Dropping multiple files can be useful, especially for browsing many fonts using the __*Font View*__.
+A __*Next File*__ button will appear on the right end of the __*Tool Bar*__ for advancing through the files.
+Holding the CTRL key while dropping or while click __*Next File*__ will automatically sequence through the files
+at two-second intervals. Pressing __*Next File*__ again (without CTRL) will pause the sequence.
+
+The File Menu also contains the __*Edit Font Properties*__ command to prepare fonts for saving as BDF.
 Blank properties will be supplied default values. Ascent and Descent are of particular value to the CircuitPython library.
 The toolbar also displays the font's line height (yAdvance) property, the number of glyphs, the pixels per dot used to scale the
 __*Font View*__, and the __*Sample Text*__ to be rendered in the __*Font View*__.
 
 ### Glyph Edit Pane
-The blue __*Glyph Box*__ shows the height of the font, as displayed in the tool bar, and the width of the selected glyph.
+The blue __*Glyph Box*__ shows the height of the font, as displayed in the __*Tool Bar*__, and the width of the selected glyph.
 Drag the bottom (baseline) of the __*Glyph Box*__ to change the font line height (effecting ALL glyphs in the font).
 When dragging with SHIFT, ALL the glyphs are offset at the same time to maintain their relationships with the baseline.
 Drag the right side of the box to adjust the selected glyph's amount of advance (the xAdvance) shown in the __*Glyph List*__.
@@ -83,8 +93,8 @@ It may be of interest to manually reorder or note the new codes for these highli
 ### Font View
 The currently selected glyph is highlighted in the view with a red bounding box
 and a glyph can be selected with a click in the view.
-Use the __*Pixels Per Dot*__ control in the Tool Bar to scale the view.
-The __*Sample Text*__ control in the Tool Bar establishes the set of glyphs to view.
+Use the __*Pixels Per Dot*__ control in the __*Tool Bar*__ to scale the view.
+The __*Sample Text*__ control in the __*Tool Bar*__ establishes the set of glyphs to view.
 When left blank, all glyphs will be displayed.
 Characters can be entered with the keyboard, or specific code values can be entered
 by number as an escape code in the style of \u0000 with FOUR hex digits. Two slashes '\\\\' are required
