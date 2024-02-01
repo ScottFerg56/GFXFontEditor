@@ -1716,8 +1716,14 @@ namespace GFXFontEditor
 
 		private void splitContainer1_Panel2_Resize(object sender, EventArgs e)
 		{
-			// for DPI: adjust margin between glyph code and glyph list 
+			// for DPI:
+			// the ListView seems to defy all efforts in the designer to anchor properly
+			// and stay that way at different resolutions
+			// let's just abandon that approach and force it here!
 			listViewGlyphs.Top = numericUpDownGlyphCode.Bottom + numericUpDownGlyphCode.Top;
+			listViewGlyphs.Height = splitContainer1.Panel2.Height - listViewGlyphs.Top;
+			listViewGlyphs.Left = 0;
+			listViewGlyphs.Width = splitContainer1.Panel2.Width;
 		}
 	}
 
