@@ -165,7 +165,7 @@ namespace GFXFontEditor
 		/// <returns>The item index</returns>
 		public int IndexOfGlyph(Glyph glyph)
 		{
-			return ItemOfGlyph(glyph).Index;
+			return glyph is null ? -1 : ItemOfGlyph(glyph).Index;
 		}
 
 		/// <summary>
@@ -1495,7 +1495,7 @@ namespace GFXFontEditor
 					if (glyph == glyphs.Last())
 						inx = 0;
 					g.CopyFrom(glyph);
-					UpdateGlyphItem(glyph);
+					UpdateGlyphItem(g);
 				}
 				OnChange();
 			}

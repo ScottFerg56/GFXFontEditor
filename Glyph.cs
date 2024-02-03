@@ -248,7 +248,7 @@ namespace GFXFontEditor
 		/// <param name="glyph">The glyph to copy from</param>
 		public void CopyFrom(Glyph glyph)
 		{
-            Points = glyph.Points;
+            Points.AddRange(glyph.Points);
 			ClearCache();
 			xAdvance = glyph.xAdvance;
 		}
