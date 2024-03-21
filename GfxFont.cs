@@ -705,11 +705,11 @@ namespace GFXFontEditor
 		/// Edit the font properties only if any are null (left to be defualted).
 		/// </summary>
 		/// <param name="properties">A reference to the properties to edit</param>
-		/// <returns>True if the edit was comitted with the OK button</returns>
+		/// <returns>True if font properties all valid or the edit was comitted with the OK button</returns>
 		public static bool EditIncomplete(ref FontProperties properties)
 		{
 			if (properties.FontName is not null && properties.PixelSize.HasValue && properties.Ascent.HasValue && properties.Descent.HasValue)
-				return false;
+				return true;
 			return Edit(ref properties);
 		}
 	}
